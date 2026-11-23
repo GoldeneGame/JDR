@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>La Taverne — JDR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============================== CONNEXION -->
+<section id="login" class="login">
+  <div class="login-card">
+    <h1>⚔ La Taverne</h1>
+    <p class="sub">Table de jeu de rôle</p>
+    <div class="login-tabs">
+      <button type="button" data-login="player" class="active">Joueur</button>
+      <button type="button" data-login="mj">Maître du jeu</button>
+    </div>
+    <form id="form-player">
+      <label>Nom de ton personnage
+        <input id="in-name" maxlength="40" required autocomplete="off" placeholder="ex : Thorin Écu-de-Chêne">
+      </label>
+      <button class="primary">Entrer dans l'aventure</button>
+      <p class="hint">Si ce personnage existe déjà, tu retrouves sa fiche.</p>
+    </form>
+    <form id="form-mj" hidden>
+      <label>Mot de passe du MJ
+        <input id="in-pass" type="password" required>
+      </label>
+      <button class="primary">Prendre place derrière l'écran</button>
+    </form>
+    <p id="login-error" class="error"></p>
+  </div>
+</section>
+
+<!-- ============================== APPLICATION -->
+<section id="app" hidden>
+  <header class="topbar">
+    <span class="brand">⚔ La Taverne</span>
+    <nav id="mj-menu" class="mj-menu mj-only">
+      <button type="button" data-panel="inviter" title="Inviter les joueurs">🔗<span> Inviter</span></button>
+      <button type="button" data-panel="cartes" title="Cartes, scènes et grille">🗺<span> Cartes</span></button>
+      <button type="button" data-panel="monstres" title="Ajouter des monstres">👹<span> Monstres</span></button>
+      <button type="button" data-panel="pions" title="Pions, PNJ et monstres sur la carte">♟<span> Pions</span></button>
+      <button type="button" data-panel="brouillard" title="Brouillard de guerre">🌫<span> Brouillard</span></button>
+      <button type="button" data-panel="eclairage" title="Éclairage dynamique de la carte">💡<span> Éclairage</span></button>
+      <button type="button" data-panel="musique" title="Musique d'ambiance">🎵<span> Musique</span></button>
+      <button type="button" data-panel="slides" title="Diaporamas">📽<span> Slides</span></button>
+      <button type="button" data-panel="partie" title="Partie">⚙<span> Partie</span></button>
+    </nav>
+    <span id="scene-title" class="scene-title"></span>
+    <span class="spacer"></span>
+    <button id="music-unlock" class="small primary" hidden title="Le navigateur attend un clic avant de jouer du son">🔊 Activer la musique</button>
+    <span id="music-now" class="music-now" hidden>
+      <span id="music-name" class="music-name"></span>
+      <input type="range" id="music-vol" min="0" max="100" title="Volume de la musique sur cet appareil">
+      <button id="music-mute" class="small" type="button">🔊</button>
+    </span>
+    <span id="mj-status" class="pill"></span>
+    <span id="me-label" class="me"></span>
+    <span id="conn" class="conn" title="Connexion"></span>
+    <button id="btn-logout" class="small">Quitter</button>
+  </header>
+
+  <main class="layout">
+    <!-- Carte -->
+    <section class="map-wrap">
+      <div class="map-toolbar">
+        <button id="zoom-out" class="small" title="Dézoomer">−</button>
+        <span id="zoom-val">100%</span>
+        <button id="zoom-in" class="small" title="Zoomer">+</button>
+        <button id="zoom-fit" class="small">Ajuster</button>
+        <span class="muted hint-drag">Glisse ton pion pour te déplacer · Ctrl + molette pour zoomer</span>
+        <button id="map-edit" class="small mj-only map-edit-btn" title="Peindre le sol et poser du décor (battle map)">🖌 Éditer la carte</button>
+      </div>
+      <div class="map-body">
+        <!-- Éditeur de battle map (MJ) -->
+        <div id="map-editor" class="map-editor mj-only" hidden>
+          <div class="me-head">
+            <strong>🖌 Éditeur de carte</strong>
+            <span id="me-scene" class="muted grow"></span>
+            <button id="me-close" class="small primary">Terminer</button>
+          </div>
+          <p id="me-none" class="muted tiny">Aucune carte affichée : crée une battle map ci-dessous (ou affiche une carte importée pour peindre dessus).</p>
+          <div id="me-tools">
+            <div class="me-row">
+              <button type="button" class="chip" data-outil="pinceau" title="Peindre case par case">🖌 Pinceau</button>
+              <button type="button" class="chip" data-outil="rect" title="Glisser pour remplir un rectangle (salles, couloirs)">▭ Rectangle</button>
+              <button type="button" class="chip" data-outil="ligne" title="Glisser pour tracer une ligne droite (murs, palissades, rivières)">╱ Ligne</button>
+              <button type="button" class="chip" data-outil="salle" title="Glisser pour créer une salle : murs sur le pourtour, sol choisi à l'intérieur (dalles par défaut). Choisis Mur, Roche, Palissade ou Forêt dense pour changer le type de murs.">🏠 Salle</button>
+              <button type="button" class="chip" data-outil="remplir" title="Remplir toute une zone identique">🪣 Remplir</button>
+              <span id="me-brush" class="me-sizes">
+                <button type="button" class="chip" data-taille="1">1</button><button type="button" class="chip" data-taille="2">2</button><button type="button" class="chip" data-taille="3">3</button>
+              </span>
+            </div>
+            <div class="me-label">Sol <button type="button" class="chip tiny-chip" data-calque-gomme="sol">Gomme</button></div>
+            <div id="me-sols" class="tile-grid"></div>
+            <div class="me-label">Décor <button type="button" class="chip tiny-chip" data-calque-gomme="deco">Gomme</button></div>
+            <input type="search" id="me-deco-search" placeholder="Rechercher un décor (ex : coffre, tombe, lanterne)" maxlength="30">
+            <div id="me-decos" class="me-decos"></div>
+            <p class="muted tiny"><span id="me-current"></span> · clic droit = effacer</p>
+            <div id="me-image" class="col">
+              <label class="check">Grille : <button type="button" class="small" id="me-cases-moins">−</button> <input type="number" id="me-cases" min="2" max="300" class="w70"> <button type="button" class="small" id="me-cases-plus">+</button> cases en largeur</label>
+              <p class="muted tiny">Ajuste jusqu'à ce que la grille tombe sur celle de l'image (décoche « Afficher la grille » dans l'onglet MJ si l'image a déjà la sienne).</p>
+            </div>
+            <div id="me-battle" class="col">
+              <label class="check">Fond <select id="me-fond"></select></label>
+              <form id="me-taille" class="row">
+                <label class="check">Taille <input type="number" id="me-cols" min="4" max="100" class="w70"> × <input type="number" id="me-rows" min="4" max="100" class="w70"> cases</label>
+                <button class="small">OK</button>
+              </form>
+            </div>
+            <div class="row">
+              <button type="button" id="me-clear-sol" class="small">Effacer le sol</button>
+              <button type="button" id="me-clear-deco" class="small">Effacer le décor</button>
+            </div>
+          </div>
+          <details id="me-create">
+            <summary>➕ Nouvelle battle map</summary>
+            <form id="bm-form" class="col">
+              <input id="bm-titre" placeholder="Titre (ex : Embuscade dans les bois)" maxlength="60">
+              <div class="me-row">
+                <button type="button" class="chip active" data-bm-type="peint">🖌 Sol peint</button>
+                <button type="button" class="chip" data-bm-type="image">🖼 Image importée</button>
+              </div>
+              <div id="bm-peint" class="col">
+                <label class="check"><input type="number" id="bm-cols" min="4" max="100" value="20" class="w70"> × <input type="number" id="bm-rows" min="4" max="100" value="14" class="w70"> cases</label>
+                <label class="check">Fond <select id="bm-fond"></select></label>
+              </div>
+              <div id="bm-image" class="col" hidden>
+                <input type="file" id="bm-file" accept="image/png,image/jpeg,image/webp,image/gif">
+                <label class="check">Cases en largeur <input type="number" id="bm-img-cols" min="2" max="300" value="20" class="w70"></label>
+                <p class="muted tiny">Compte les cases de la grille dessinée sur l'image, d'un bord à l'autre : la grille et les pions s'y aligneront. Tu pourras ajuster ensuite.</p>
+              </div>
+              <button class="primary">Créer et afficher</button>
+            </form>
+          </details>
+        </div>
+        <div id="map-viewport" class="map-viewport">
+          <div id="map" class="map">
+            <img id="map-img" alt="" hidden draggable="false">
+            <canvas id="map-tiles" class="map-tiles" hidden></canvas>
+            <div id="map-grid" class="map-grid"></div>
+            <div id="map-cursor" class="map-cursor" hidden></div>
+            <div id="door-layer" class="door-layer"></div>
+            <div id="tokens" class="tokens"></div>
+            <canvas id="map-light" class="map-light" hidden></canvas>
+            <canvas id="map-tint" class="map-tint" hidden></canvas>
+            <canvas id="map-shade" class="map-shade" hidden></canvas>
+            <div id="shade-rect" class="fog-rect cacher" hidden></div>
+            <div id="light-markers" class="light-markers mj-only" hidden></div>
+            <canvas id="map-fog" class="map-fog" hidden></canvas>
+            <div id="fog-rect" class="fog-rect" hidden></div>
+          </div>
+        </div>
+      </div>
+      <div id="dice-tray" class="dice-tray"></div>
+      <div id="party" class="party"></div>
+    </section>
+
+    <!-- Panneau latéral -->
+    <aside class="side">
+      <nav class="side-tabs">
+        <button data-tab="chat" class="active">Journal</button>
+        <button data-tab="fiche">Fiche</button>
+        <button data-tab="pion">Pion</button>
+        <button data-tab="init">Initiative</button>
+      </nav>
+
+      <!-- Journal / dés -->
+      <div class="tab" id="tab-chat">
+        <div id="log" class="log"></div>
+        <div class="dice-picker">
+          <div class="dice-bar" id="dice-bar" title="Clic : ajouter un dé · Clic droit : en retirer un"></div>
+          <div class="row dice-opts">
+            <span class="muted tiny">Bonus</span>
+            <button type="button" id="mod-minus" class="tiny-btn">−</button>
+            <span id="pool-mod" class="pool-mod">+0</span>
+            <button type="button" id="mod-plus" class="tiny-btn">+</button>
+            <span class="spacer"></span>
+            <button type="button" data-adv="kh" class="tiny-btn" title="2d20, on garde le meilleur">Avantage</button>
+            <button type="button" data-adv="kl" class="tiny-btn" title="2d20, on garde le pire">Désavantage</button>
+          </div>
+          <form id="roll-form" class="row">
+            <input id="roll-formula" placeholder="Choisis tes dés ci-dessus (ou écris 1d8+3)" autocomplete="off">
+            <button type="button" id="roll-clear" class="tiny-btn" title="Vider">✕</button>
+            <button class="primary roll-btn">🎲 Lancer</button>
+          </form>
+          <div class="row dice-opts">
+            <label class="check tiny" title="Seul le MJ verra le résultat"><input type="checkbox" id="roll-secret"> Jet secret</label>
+            <span class="spacer"></span>
+            <label class="check tiny"><input type="checkbox" id="opt-anim" checked> Animation</label>
+            <label class="check tiny"><input type="checkbox" id="opt-sound" checked> Son</label>
+          </div>
+        </div>
+        <form id="chat-form" class="row">
+          <select id="chat-to" title="Destinataire"></select>
+          <input id="chat-input" placeholder="Message… (/r 1d20+2 pour lancer)" autocomplete="off" maxlength="2000">
+          <button>Envoyer</button>
+        </form>
+        <label class="check mj-only narr"><input type="checkbox" id="chat-narr"> Message de narration (encadré, pour tous)</label>
+      </div>
+
+      <!-- Fiche -->
+      <div class="tab" id="tab-fiche" hidden>
+        <div class="mj-only row">
+          <select id="fiche-select"></select>
+          <button id="fiche-delete" class="danger small" title="Supprimer ce personnage">Supprimer</button>
+        </div>
+        <p id="sheet-empty" class="muted">Aucun personnage pour l'instant. Les joueurs créent leur personnage en se connectant.</p>
+        <div id="sheet" class="sheet">
+          <div class="sheet-id">
+            <input data-field="name" class="sheet-name" maxlength="40" title="Nom (sert à te reconnecter)">
+            <input data-field="couleur" type="color" title="Couleur du pion">
+          </div>
+          <div class="grid3">
+            <label>Race<input data-field="race" maxlength="40" list="races"></label>
+            <label>Classe<select id="classe-select"></select><input data-field="classe" maxlength="40" id="classe-libre" placeholder="Nom de la classe" hidden></label>
+            <label>Niveau<input data-field="niveau" type="number" min="1" max="30"></label>
+            <label>Alignement<input data-field="alignement" maxlength="40"></label>
+            <label>Historique<input data-field="historique" maxlength="60"></label>
+            <label>XP<input data-field="xp" type="number" min="0"></label>
+          </div>
+
+          <datalist id="races">
+            <option value="Humain"><option value="Elfe"><option value="Nain"><option value="Halfelin"><option value="Gnome">
+            <option value="Demi-elfe"><option value="Demi-orc"><option value="Tieffelin"><option value="Drakéide">
+          </datalist>
+          <div id="classe-box" class="classe-box" hidden></div>
+
+          <div class="combat">
+            <div class="box hpbox">
+              <span class="box-title">Points de vie</span>
+              <div class="hp-line"><input data-field="pv" type="number"> / <input data-field="pvMax" type="number" min="1"></div>
+              <label class="small-label">Temporaires <input data-field="pvTemp" type="number" min="0"></label>
+              <div class="row dmg">
+                <input id="dmg-amount" type="number" min="1" placeholder="0">
+                <button id="btn-dmg" class="danger small">Dégâts</button>
+                <button id="btn-heal" class="ok small">Soins</button>
+              </div>
+            </div>
+            <div class="box"><span class="box-title">CA</span><input data-field="ca" type="number" class="big"></div>
+            <div class="box"><span class="box-title">Initiative</span><button id="calc-init" class="big-btn" title="Lancer l'initiative"></button></div>
+            <div class="box"><span class="box-title">Vitesse (m)</span><input data-field="vitesse" type="number" class="big"></div>
+            <div class="box"><span class="box-title">Maîtrise</span><span id="calc-maitrise" class="big-val"></span></div>
+            <div class="box"><span class="box-title">Pièces d'or</span><input data-field="po" type="number" class="big"></div>
+          </div>
+
+          <div id="stats" class="stats"></div>
+          <p class="muted tiny">Clique sur un modificateur pour faire un jet (d20 + mod).</p>
+
+          <label class="area">Compétences & maîtrises<textarea data-field="competences" rows="3"></textarea></label>
+          <label class="area">Inventaire & équipement<textarea data-field="inventaire" rows="4"></textarea></label>
+          <label class="area">Sorts & capacités<textarea data-field="sorts" rows="4"></textarea></label>
+          <label class="area">Notes<textarea data-field="notes" rows="4"></textarea></label>
+        </div>
+      </div>
+
+      <!-- Éditeur de pion -->
+      <div class="tab" id="tab-pion" hidden>
+        <div class="mj-only row"><select id="pion-select" title="Pion à modifier"></select></div>
+        <p id="pion-empty" class="muted">Aucun pion à personnaliser.</p>
+        <div id="pion-editor" class="pion-editor">
+          <div class="pion-preview">
+            <div id="pion-preview"></div>
+            <span id="pion-preview-name" class="pion-preview-name"></span>
+          </div>
+
+          <div class="mj-only grid2">
+            <label>Nom<input id="pion-label" maxlength="30"></label>
+            <label>Taille
+              <select id="pion-taille">
+                <option value="1">Moyen (1 case)</option><option value="2">Grand (2×2)</option>
+                <option value="3">Très grand (3×3)</option><option value="4">Gigantesque (4×4)</option>
+              </select>
+            </label>
+          </div>
+
+          <h3>Visage du pion</h3>
+          <div class="seg" id="pion-contenu">
+            <button data-contenu="figurine">Personnage</button>
+            <button data-contenu="monstre">Monstre</button>
+            <button data-contenu="embleme">Emblème</button>
+            <button data-contenu="image">Portrait</button>
+            <button data-contenu="initiales">Initiales</button>
+          </div>
+
+          <div id="pion-figurine" class="fig-editor">
+            <div class="fig-label">Modèles</div>
+            <div id="fig-modeles" class="chips"></div>
+            <button type="button" id="fig-random" class="small">🎲 Personnage aléatoire</button>
+            <div id="fig-options" class="fig-options"></div>
+          </div>
+
+          <div id="pion-monstres" class="mo-grid" hidden></div>
+
+          <div id="pion-emblemes" class="emblemes"></div>
+
+          <div id="pion-image-zone" class="col">
+            <label class="file-btn">📷 Importer une image…<input type="file" id="pion-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+            <div id="cropper" class="cropper" hidden>
+              <canvas id="crop-canvas" width="240" height="240"></canvas>
+              <label class="check">Zoom <input type="range" id="crop-zoom" min="1" max="4" step="0.01" value="1"></label>
+              <p class="tiny muted">Glisse l'image pour la cadrer dans le cercle.</p>
+              <div class="row">
+                <button id="crop-cancel" class="small">Annuler</button>
+                <button id="crop-ok" class="primary">Utiliser ce portrait</button>
+              </div>
+            </div>
+          </div>
+
+          <label class="check">Couleur de fond <input type="color" id="pion-couleur"></label>
+
+          <h3>Lumière et vision</h3>
+          <label class="check">Lumière portée <select id="pion-lumiere" class="grow"></select></label>
+          <label class="check">Vision dans le noir
+            <select id="pion-vision" class="grow">
+              <option value="0">Aucune</option>
+              <option value="6">6 cases (9 m)</option>
+              <option value="12">12 cases (18 m)</option>
+              <option value="24">24 cases (36 m)</option>
+            </select>
+          </label>
+          <p class="muted tiny">Visible quand le MJ active l'éclairage de la carte. La vision dans le noir montre les alentours en pénombre, à toi seul.</p>
+
+          <h3>Forme</h3>
+          <div id="pion-formes" class="choices"></div>
+
+          <h3>Cadre</h3>
+          <div id="pion-cadres" class="choices"></div>
+        </div>
+      </div>
+
+      <!-- Initiative -->
+      <div class="tab" id="tab-init" hidden>
+        <div class="init-head">
+          <strong id="init-round">Round 1</strong>
+          <button id="init-roll" class="primary player-only">🎲 Lancer mon initiative</button>
+        </div>
+        <ol id="init-list" class="init-list"></ol>
+        <p id="init-empty" class="muted">Aucun combattant. Les joueurs lancent leur initiative, le MJ ajoute les monstres.</p>
+        <div class="mj-only init-mj">
+          <div class="row">
+            <button id="init-prev">◀ Précédent</button>
+            <button id="init-next" class="primary">Tour suivant ▶</button>
+          </div>
+          <form id="init-form" class="row">
+            <input id="init-name" placeholder="Nom (ex : Orque)" required maxlength="30">
+            <input id="init-val" type="number" placeholder="Init (vide = d20)">
+            <label class="check"><input type="checkbox" id="init-hidden"> Caché</label>
+            <button>Ajouter</button>
+          </form>
+          <button id="init-clear" class="danger small">Terminer le combat</button>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+</section>
+
+
+<!-- Outils du MJ : panneaux ouverts depuis le bandeau du haut -->
+<div id="mj-panels" class="mj-only">
+  <div class="mj-panel" id="mjp-inviter" hidden>
+    <div class="mj-panel-head"><strong>🔗 Inviter les joueurs</strong><button type="button" class="tiny-btn" data-close-panel title="Fermer (Échap)">✕</button></div>
+    <div class="mj-panel-body">
+        <div id="links" class="links"></div>
+
+        
+    </div>
+  </div>
+  <div class="mj-panel" id="mjp-cartes" hidden>
+    <div class="mj-panel-head"><strong>🗺 Cartes & scènes</strong><button type="button" class="tiny-btn" data-close-panel title="Fermer (Échap)">✕</button></div>
+    <div class="mj-panel-body">
+        <form id="scene-form" class="col">
+          <input id="scene-titre" placeholder="Titre (ex : La crypte oubliée)" maxlength="60">
+          <label class="check">Battle map ? <input type="number" id="scene-cols" min="2" max="300" class="w70" placeholder="—"> cases en largeur <span class="muted tiny">(si l'image a une grille)</span></label>
+          <div class="row">
+            <input type="file" id="scene-file" accept="image/png,image/jpeg,image/webp,image/gif" required>
+            <button class="primary">Ajouter</button>
+          </div>
+        </form>
+        <ul id="scene-list" class="list"></ul>
+        <div class="row">
+          <button id="mj-battlemap" class="small">🗺 Créer une battle map</button>
+          <button id="scene-none" class="small">Afficher un fond vierge</button>
+        </div>
+
+        
+        <h3>Grille</h3>
+        <div class="row">
+          <label class="check"><input type="checkbox" id="grid-on"> Afficher la grille</label>
+          <label class="check">Case <input type="number" id="grid-size" min="10" max="400" class="w70"> px</label>
+        </div>
+
+        
+    </div>
+  </div>
+  <div class="mj-panel" id="mjp-monstres" hidden>
+    <div class="mj-panel-head"><strong>👹 Monstres</strong><button type="button" class="tiny-btn" data-close-panel title="Fermer (Échap)">✕</button></div>
+    <div class="mj-panel-body">
+        <form id="monster-form" class="col">
+          <div class="monster-pick">
+            <div id="monster-preview" class="monster-preview"></div>
+            <div class="col grow">
+              <select id="monster-model"></select>
+              <div id="monster-info" class="monster-info"></div>
+            </div>
+          </div>
+          <div class="row wrap">
+            <label class="check">Nombre <input type="number" id="monster-count" min="1" max="20" value="1" class="w70"></label>
+            <label class="check" title="Lancer l'initiative de chaque monstre (en secret)"><input type="checkbox" id="monster-init" checked> Initiative</label>
+            <label class="check" title="Tirer les PV aux dés au lieu de la moyenne"><input type="checkbox" id="monster-roll"> PV aux dés</label>
+            <label class="check"><input type="checkbox" id="monster-hidden"> Cachés</label>
+            <button class="primary">Ajouter</button>
+          </div>
+        </form>
+        <p class="muted tiny">Clic droit sur un pion (ou bouton 💥) pour infliger des dégâts ou soigner. 🎲 lance l'attaque d'un monstre.</p>
+
+        
+    </div>
+  </div>
+  <div class="mj-panel" id="mjp-pions" hidden>
+    <div class="mj-panel-head"><strong>♟ Pions (monstres, PNJ…)</strong><button type="button" class="tiny-btn" data-close-panel title="Fermer (Échap)">✕</button></div>
+    <div class="mj-panel-body">
+        <form id="token-form" class="row wrap">
+          <input id="token-name" placeholder="Nom (ex : Gobelin 1)" required maxlength="30">
+          <label class="check" title="Laisser vide pour un pion sans PV">PV <input type="number" id="token-pv" min="1" max="9999" class="w70" placeholder="—"></label>
+          <label class="check">CA <input type="number" id="token-ca" min="0" max="50" class="w70" placeholder="10"></label>
+          <input type="color" id="token-color" value="#8b1e1e">
+          <select id="token-size">
+            <option value="1">Moyen</option><option value="2">Grand</option>
+            <option value="3">Très grand</option><option value="4">Gigantesque</option>
+          </select>
+          <label class="check"><input type="checkbox" id="token-hidden"> Caché</label>
+          <button class="primary">Ajouter</button>
+        </form>
+        <ul id="token-list" class="list"></ul>
+        <button id="monsters-clean" class="small" type="button">💀 Retirer les monstres vaincus</button>
+
+        
+    </div>
+  </div>
+  <div class="mj-panel" id="mjp-brouillard" hidden>
+    <div class="mj-panel-head"><strong>🌫 Brouillard de guerre</strong><button type="button" class="tiny-btn" data-close-panel title="Fermer (Échap)">✕</button></div>
+    <div class="mj-panel-body">
+        <p id="fog-none" class="muted tiny">Affiche d'abord une carte ou une battle map : le brouillard se règle carte par carte.</p>
+        <div id="fog-body" class="col">
+          <label class="check"><input type="checkbox" id="fog-on"> <strong>Activer le brouillard sur cette carte</strong></label>
+          <p class="muted tiny">Les joueurs ne voient que les zones révélées. Les monstres et PNJ dans le brouillard ne leur sont même pas envoyés.
+            Toi, tu vois à travers (zones hachurées).</p>
+          <div id="fog-tools" class="col">
+            <h3>Révéler et cacher</h3>
+            <div class="seg" id="fog-mode">
+              <button type="button" data-vu="1" class="active">👁 Révéler</button>
+              <button type="button" data-vu="0">🌫 Cacher</button>
+            </div>
+            <div class="row wrap">
+              <div class="seg" id="fog-forme">
+                <button type="button" data-forme="pinceau" class="active">🖌 Pinceau</button>
+                <button type="button" data-forme="rectangle">▭ Rectangle</button>
+              </div>
+              <label class="check">Taille
+                <select id="fog-taille"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="5">5</option><option value="9">9</option></select>
+              </label>
+            </div>
+            <button type="button" id="fog-paint" class="primary">🖌 Peindre sur la carte</button>
+            <p class="muted tiny">Pendant que l'outil est actif, la carte sert de toile : clic gauche = l'outil choisi, clic droit = l'inverse. Échap pour arrêter.</p>
+            <div class="row">
+              <button type="button" id="fog-all-show" class="small">👁 Tout révéler</button>
+              <button type="button" id="fog-all-hide" class="small danger">🌫 Tout recouvrir</button>
+            </div>
+
+            <h3>Exploration</h3>
+            <label class="check"><input type="checkbox" id="fog-auto"> Les pions des joueurs révèlent ce qu'ils voient en se déplaçant</label>
+            <label class="check">Portée de vue <input type="number" id="fog-vue" min="1" max="40" class="w70"> cases</label>
+            <p class="muted tiny">Les murs et la roche bloquent la vue. De nuit (éclairage actif), la portée devient celle de la lumière
+              portée par le pion ou de sa vision dans le noir.</p>
+            <label class="check"><input type="checkbox" id="fog-preview"> Voir comme les joueurs</label>
+          </div>
+        </div>
+    </div>
+  </div>
+  <div class="mj-panel" id="mjp-eclairage" hidden>
+    <div class="mj-panel-head"><strong>💡 Éclairage dynamique</strong><button type="button" class="tiny-btn" data-close-panel title="Fermer (Échap)">✕</button></div>
+    <div class="mj-panel-body">
+        <p id="light-none" class="muted tiny">Affiche d'abord une carte ou une battle map : l'éclairage se règle carte par carte.</p>
+        <div id="light-body" class="col">
+          <label class="check"><input type="checkbox" id="light-on"> <strong>Activer l'éclairage sur cette carte</strong></label>
+          <h3>Ambiance</h3>
+          <div id="light-ambiances" class="row wrap"></div>
+          <label class="check">Obscurité <input type="range" id="light-nuit" min="0" max="100" class="grow"></label>
+          <label class="check"><input type="checkbox" id="light-walls"> Les murs et la roche arrêtent la lumière (ombres)</label>
+          <label class="check"><input type="checkbox" id="light-decor"> Les feux, bougies et la lave du décor éclairent</label>
+          <label class="check" title="Sur ton écran seulement : tu vois la carte aussi sombre que les joueurs"><input type="checkbox" id="light-preview"> Voir comme les joueurs</label>
+          <p class="muted tiny">Tu vois la carte en pénombre pour garder la main ; les joueurs ne voient que ce qui est éclairé.</p>
+
+          <h3>Zones d'ombre</h3>
+          <p class="muted tiny">Peins l'ombre où tu veux, même sans activer l'éclairage : recoin sombre, sous-bois, ténèbres magiques…
+            En <strong>ténèbres totales</strong>, les joueurs ne voient plus rien, pas même les monstres qui s'y cachent.</p>
+          <div id="shade-niveaux" class="row wrap"></div>
+          <div class="row wrap">
+            <div class="seg" id="shade-forme">
+              <button type="button" data-forme="pinceau" class="active">🖌 Pinceau</button>
+              <button type="button" data-forme="rectangle">▭ Rectangle</button>
+            </div>
+            <label class="check">Taille
+              <select id="shade-taille"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="5">5</option><option value="9">9</option></select>
+            </label>
+          </div>
+          <button type="button" id="shade-paint" class="primary">🖌 Peindre l'ombre sur la carte</button>
+          <p class="muted tiny">Clic gauche = l'intensité choisie, clic droit = gomme, Échap pour arrêter.</p>
+          <div class="row">
+            <label class="check grow"><input type="checkbox" id="shade-preview"> Voir l'ombre comme les joueurs</label>
+            <button type="button" id="shade-clear" class="small danger">Tout effacer</button>
+          </div>
+
+          <h3>Lumières posées</h3>
+          <div class="row">
+            <select id="light-type" class="grow"></select>
+            <button type="button" id="light-place" class="primary small">＋ Poser</button>
+          </div>
+          <p class="muted tiny">Puis clique sur la carte (Maj + clic pour en poser plusieurs). Sur la carte : glisse une lumière pour la déplacer, clic droit pour la retirer.</p>
+          <ol id="light-list" class="list light-list"></ol>
+          <button type="button" id="light-clear" class="small danger">Retirer toutes les lumières</button>
+
+          <h3>Pions qui éclairent</h3>
+          <p class="muted tiny">Torche, lanterne, sort de lumière, vision dans le noir : onglet <strong>Pion</strong> (double-clic sur un pion). Les joueurs peuvent allumer la leur.</p>
+          <ul id="light-carriers" class="list tiny"></ul>
+          <p id="light-carriers-empty" class="muted tiny">Aucun pion ne porte de lumière.</p>
+        </div>
+    </div>
+  </div>
+  <div class="mj-panel" id="mjp-musique" hidden>
+    <div class="mj-panel-head"><strong>🎵 Musique d'ambiance</strong><button type="button" class="tiny-btn" data-close-panel title="Fermer (Échap)">✕</button></div>
+    <div class="mj-panel-body">
+        <p class="muted tiny">Clique sur une ambiance : elle se lance chez tous les joueurs, avec un fondu. Clique à nouveau pour l'arrêter.</p>
+        <div id="music-grid" class="music-grid"></div>
+        <div class="row music-controls">
+          <button id="music-stop" class="small danger" type="button">⏹ Arrêter la musique</button>
+          <label class="check grow">Volume pour tous <input type="range" id="music-global" min="0" max="100" class="grow"></label>
+        </div>
+        <p class="muted tiny">Chaque joueur peut aussi baisser ou couper la musique chez lui (en haut de l'écran).</p>
+
+        <h3>Mes musiques</h3>
+        <div id="music-drop" class="music-drop">
+          <p class="muted tiny">Importe tes propres morceaux (MP3, OGG, M4A, WAV, FLAC) : bande originale d'un jeu ou d'un film que tu possèdes,
+            musiques libres de droits… Ils se jouent en boucle chez tous les joueurs, comme les ambiances ci-dessus.</p>
+          <label class="file-btn">📁 Importer des musiques…<input type="file" id="music-file" accept="audio/*,.mp3,.ogg,.m4a,.wav,.flac" multiple hidden></label>
+          <span class="muted tiny">ou glisse les fichiers ici</span>
+        </div>
+        <p id="music-upload-status" class="tiny" hidden></p>
+        <div id="music-perso" class="music-perso"></div>
+        <p id="music-perso-empty" class="muted tiny">Aucune musique importée pour l'instant.</p>
+      
+    </div>
+  </div>
+  <div class="mj-panel wide" id="mjp-slides" hidden>
+    <div class="mj-panel-head"><strong>📽 Diaporamas</strong><button type="button" class="tiny-btn" data-close-panel title="Fermer (Échap)">✕</button></div>
+    <div class="mj-panel-body">
+        <div class="row">
+          <select id="deck-select" title="Diaporama"></select>
+          <button id="deck-new" class="small" title="Nouveau diaporama">＋ Nouveau</button>
+          <button id="deck-delete" class="danger small" title="Supprimer ce diaporama">✕</button>
+        </div>
+        <p id="deck-empty" class="muted">Crée un diaporama pour préparer tes slides : intro de séance, lieux, PNJ, révélations…</p>
+
+        <div id="deck-editor" class="col">
+          <input id="deck-titre" class="deck-titre" maxlength="80" placeholder="Titre du diaporama">
+
+          <!-- Génération par l'IA -->
+          <details id="ia-box" class="ia-box" open>
+            <summary>✨ Générer des slides avec l'IA</summary>
+            <div id="ia-off" class="muted tiny">
+              Pour activer la génération, ajoute ta clé API Anthropic dans <code>config.json</code>
+              (<code>"cleApiAnthropic": "sk-ant-…"</code>) puis relance l'application.
+              Tu peux toujours créer tes slides à la main ci-dessous.
+            </div>
+            <form id="ia-form" class="col">
+              <textarea id="ia-prompt" rows="3" maxlength="2000" placeholder="Ex : les héros arrivent de nuit au village de Brumeval, tous les habitants ont disparu, seule la taverne est éclairée…"></textarea>
+              <div class="row wrap">
+                <label class="check">Slides <input id="ia-nombre" type="number" min="1" max="10" value="3" class="w70"></label>
+                <select id="ia-ton" title="Ton">
+                  <option value="">Ton libre</option><option>épique</option><option>sombre et inquiétant</option>
+                  <option>mystérieux</option><option>héroïque</option><option>humoristique</option><option>horrifique</option>
+                </select>
+                <label class="check" title="L'IA connaît les noms, races et classes des personnages"><input type="checkbox" id="ia-groupe" checked> Inclure le groupe</label>
+              </div>
+              <button id="ia-go" class="primary">✨ Générer</button>
+              <p id="ia-status" class="muted tiny"></p>
+            </form>
+          </details>
+
+          <div class="row">
+            <strong class="grow">Slides</strong>
+            <button id="slide-add" class="small">＋ Slide</button>
+            <button id="deck-present" class="primary small">▶ Projeter</button>
+          </div>
+          <ol id="slide-list" class="slide-list"></ol>
+
+          <!-- Édition de la slide sélectionnée -->
+          <div id="slide-editor" class="slide-editor">
+            <div id="slide-preview" class="slide-preview"></div>
+            <label class="area">Titre<input id="slide-titre" maxlength="120"></label>
+            <label class="area">Texte lu aux joueurs<textarea id="slide-texte" rows="5" maxlength="3000"></textarea></label>
+            <div class="fig-label">Thème</div>
+            <div id="slide-styles" class="chips"></div>
+            <div class="fig-label">Image</div>
+            <div class="row wrap">
+              <label class="file-btn small-file">📷 Importer…<input type="file" id="slide-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+              <select id="slide-scene" title="Reprendre une carte déjà importée"><option value="">— ou une carte —</option></select>
+              <button id="slide-noimg" class="small">Sans image</button>
+            </div>
+            <div class="row">
+              <button id="slide-up" class="small" title="Monter">▲</button>
+              <button id="slide-down" class="small" title="Descendre">▼</button>
+              <span class="spacer"></span>
+              <button id="slide-delete" class="danger small">Supprimer</button>
+              <button id="slide-show" class="primary small">▶ Projeter celle-ci</button>
+            </div>
+          </div>
+        </div>
+      
+    </div>
+  </div>
+  <div class="mj-panel" id="mjp-partie" hidden>
+    <div class="mj-panel-head"><strong>⚙ Partie</strong><button type="button" class="tiny-btn" data-close-panel title="Fermer (Échap)">✕</button></div>
+    <div class="mj-panel-body">
+        <button id="log-clear" class="danger small">Effacer le journal</button>
+      
+    </div>
+  </div>
+</div>
+
+<!-- Dégâts & soins (MJ) -->
+<div id="dmg-pop" class="dmg-pop mj-only" hidden>
+  <div class="dmg-head"><strong>💥 Dégâts &amp; soins</strong><button id="dmg-close" class="tiny-btn" type="button" title="Fermer (Échap)">✕</button></div>
+  <div id="dmg-targets" class="dmg-targets"></div>
+  <select id="dmg-add"></select>
+  <form id="dmg-form" class="col">
+    <input id="dmg-val" placeholder="Montant : 7 ou 2d6+3" autocomplete="off" maxlength="40">
+    <div class="row wrap dmg-quick">
+      <button type="button" class="tiny-btn danger" data-q="1">−1</button>
+      <button type="button" class="tiny-btn danger" data-q="2">−2</button>
+      <button type="button" class="tiny-btn danger" data-q="5">−5</button>
+      <button type="button" class="tiny-btn danger" data-q="10">−10</button>
+      <button type="button" class="tiny-btn ok" data-q="-1">+1</button>
+      <button type="button" class="tiny-btn ok" data-q="-5">+5</button>
+    </div>
+    <label class="check"><input type="checkbox" id="dmg-half"> Moitié (jet de sauvegarde réussi)</label>
+    <label class="check"><input type="checkbox" id="dmg-secret"> Jet de dés secret</label>
+    <div class="row">
+      <button class="danger grow-btn" id="dmg-hit">💥 Infliger</button>
+      <button type="button" class="ok grow-btn" id="dmg-heal">💚 Soigner</button>
+    </div>
+  </form>
+  <div id="dmg-monster" class="dmg-monster"></div>
+</div>
+
+<!-- Projection d'une slide (tout le monde) -->
+<div id="projection" class="projection" hidden>
+  <div id="projection-slide" class="slide-wrap"></div>
+  <div class="projection-bar">
+    <span id="projection-count" class="projection-count"></span>
+    <span class="spacer"></span>
+    <span class="mj-only row">
+      <button id="proj-prev" class="small">◀ Précédente</button>
+      <button id="proj-next" class="primary small">Suivante ▶</button>
+      <button id="proj-stop" class="danger small">■ Arrêter</button>
+    </span>
+    <button id="proj-hide" class="small" title="Échap">Réduire</button>
+  </div>
+</div>
+<button id="projection-pill" class="projection-pill" hidden>📽 Présentation en cours — afficher</button>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="vendor/socket.io.min.js"></script>
+<script src="figurine.js"></script>
+<script src="monsters.js"></script>
+<script src="dice.js"></script>
+<script src="app.js"></script>
+<script src="battlemap.js"></script>
+<script src="lighting.js"></script>
+<script src="fog.js"></script>
+<script src="shade.js"></script>
+<script src="doors.js"></script>
+<script src="slides.js"></script>
+<script src="music.js"></script>
+<script src="combat.js"></script>
+<script src="classes.js"></script>
+<script src="levelup.js"></script>
+</body>
+</html>
