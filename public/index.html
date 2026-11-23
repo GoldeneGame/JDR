@@ -43,13 +43,12 @@
     <span class="brand">⚔ La Taverne</span>
     <nav id="mj-menu" class="mj-menu mj-only">
       <button type="button" data-panel="inviter" title="Inviter les joueurs">🔗<span> Inviter</span></button>
-      <button type="button" data-panel="cartes" title="Cartes, scènes et grille">🗺<span> Cartes</span></button>
+      <button type="button" data-panel="seance" title="Séance : cartes, battle maps et slides, dans l'ordre de ta séance">🎬<span> Séance</span></button>
       <button type="button" data-panel="monstres" title="Ajouter des monstres">👹<span> Monstres</span></button>
       <button type="button" data-panel="pions" title="Pions, PNJ et monstres sur la carte">♟<span> Pions</span></button>
       <button type="button" data-panel="brouillard" title="Brouillard de guerre">🌫<span> Brouillard</span></button>
       <button type="button" data-panel="eclairage" title="Éclairage dynamique de la carte">💡<span> Éclairage</span></button>
       <button type="button" data-panel="musique" title="Musique d'ambiance">🎵<span> Musique</span></button>
-      <button type="button" data-panel="slides" title="Diaporamas">📽<span> Slides</span></button>
       <button type="button" data-panel="partie" title="Partie">⚙<span> Partie</span></button>
     </nav>
     <span id="scene-title" class="scene-title"></span>
@@ -373,33 +372,6 @@
         
     </div>
   </div>
-  <div class="mj-panel" id="mjp-cartes" hidden>
-    <div class="mj-panel-head"><strong>🗺 Cartes & scènes</strong><button type="button" class="tiny-btn" data-close-panel title="Fermer (Échap)">✕</button></div>
-    <div class="mj-panel-body">
-        <form id="scene-form" class="col">
-          <input id="scene-titre" placeholder="Titre (ex : La crypte oubliée)" maxlength="60">
-          <label class="check">Battle map ? <input type="number" id="scene-cols" min="2" max="300" class="w70" placeholder="—"> cases en largeur <span class="muted tiny">(si l'image a une grille)</span></label>
-          <div class="row">
-            <input type="file" id="scene-file" accept="image/png,image/jpeg,image/webp,image/gif" required>
-            <button class="primary">Ajouter</button>
-          </div>
-        </form>
-        <ul id="scene-list" class="list"></ul>
-        <div class="row">
-          <button id="mj-battlemap" class="small">🗺 Créer une battle map</button>
-          <button id="scene-none" class="small">Afficher un fond vierge</button>
-        </div>
-
-        
-        <h3>Grille</h3>
-        <div class="row">
-          <label class="check"><input type="checkbox" id="grid-on"> Afficher la grille</label>
-          <label class="check">Case <input type="number" id="grid-size" min="10" max="400" class="w70"> px</label>
-        </div>
-
-        
-    </div>
-  </div>
   <div class="mj-panel" id="mjp-monstres" hidden>
     <div class="mj-panel-head"><strong>👹 Monstres</strong><button type="button" class="tiny-btn" data-close-panel title="Fermer (Échap)">✕</button></div>
     <div class="mj-panel-body">
@@ -559,72 +531,93 @@
       
     </div>
   </div>
-  <div class="mj-panel wide" id="mjp-slides" hidden>
-    <div class="mj-panel-head"><strong>📽 Diaporamas</strong><button type="button" class="tiny-btn" data-close-panel title="Fermer (Échap)">✕</button></div>
+  <div class="mj-panel wide" id="mjp-seance" hidden>
+    <div class="mj-panel-head"><strong>🎬 Séance</strong><button type="button" class="tiny-btn" data-close-panel title="Fermer (Échap)">✕</button></div>
     <div class="mj-panel-body">
+      <div class="seance-tabs">
+        <button type="button" class="chip active" data-seance-tab="deroule">📜 Déroulé</button>
+        <button type="button" class="chip" data-seance-tab="cartes">🗺 Cartes & battle maps</button>
+      </div>
+
+      <!-- Déroulé : slides et cartes à la suite, avec transitions -->
+      <section id="seance-deroule" class="col">
         <div class="row">
-          <select id="deck-select" title="Diaporama"></select>
-          <button id="deck-new" class="small" title="Nouveau diaporama">＋ Nouveau</button>
-          <button id="deck-delete" class="danger small" title="Supprimer ce diaporama">✕</button>
+          <select id="deck-select" title="Déroulé"></select>
+          <button id="deck-new" class="small" title="Nouveau déroulé">＋ Nouveau</button>
+          <button id="deck-delete" class="danger small" title="Supprimer ce déroulé">✕</button>
         </div>
-        <p id="deck-empty" class="muted">Crée un diaporama pour préparer tes slides : intro de séance, lieux, PNJ, révélations…</p>
+        <p id="deck-empty" class="muted">Crée un déroulé pour enchaîner ta séance : slides d'ambiance, puis la battle map du combat, puis une autre slide… Tu passes de l'une à l'autre avec ◀ ▶, avec une transition.</p>
 
         <div id="deck-editor" class="col">
-          <input id="deck-titre" class="deck-titre" maxlength="80" placeholder="Titre du diaporama">
+          <input id="deck-titre" class="deck-titre" maxlength="80" placeholder="Titre du déroulé">
 
-          <!-- Génération par l'IA -->
-          <details id="ia-box" class="ia-box" open>
-            <summary>✨ Générer des slides avec l'IA</summary>
-            <div id="ia-off" class="muted tiny">
-              Pour activer la génération, ajoute ta clé API Anthropic dans <code>config.json</code>
-              (<code>"cleApiAnthropic": "sk-ant-…"</code>) puis relance l'application.
-              Tu peux toujours créer tes slides à la main ci-dessous.
-            </div>
-            <form id="ia-form" class="col">
-              <textarea id="ia-prompt" rows="3" maxlength="2000" placeholder="Ex : les héros arrivent de nuit au village de Brumeval, tous les habitants ont disparu, seule la taverne est éclairée…"></textarea>
-              <div class="row wrap">
-                <label class="check">Slides <input id="ia-nombre" type="number" min="1" max="10" value="3" class="w70"></label>
-                <select id="ia-ton" title="Ton">
-                  <option value="">Ton libre</option><option>épique</option><option>sombre et inquiétant</option>
-                  <option>mystérieux</option><option>héroïque</option><option>humoristique</option><option>horrifique</option>
-                </select>
-                <label class="check" title="L'IA connaît les noms, races et classes des personnages"><input type="checkbox" id="ia-groupe" checked> Inclure le groupe</label>
-              </div>
-              <button id="ia-go" class="primary">✨ Générer</button>
-              <p id="ia-status" class="muted tiny"></p>
-            </form>
-          </details>
-
-          <div class="row">
-            <strong class="grow">Slides</strong>
-            <button id="slide-add" class="small">＋ Slide</button>
-            <button id="deck-present" class="primary small">▶ Projeter</button>
+          <div class="row wrap">
+            <strong class="grow">Étapes</strong>
+            <button id="slide-add" class="small" title="Ajouter une slide après l'étape sélectionnée">＋ Slide</button>
+            <select id="step-add-carte" title="Ajouter une carte ou une battle map après l'étape sélectionnée"></select>
+            <button id="deck-present" class="primary small">▶ Lancer</button>
           </div>
           <ol id="slide-list" class="slide-list"></ol>
 
-          <!-- Édition de la slide sélectionnée -->
+          <!-- Édition de l'étape sélectionnée -->
           <div id="slide-editor" class="slide-editor">
             <div id="slide-preview" class="slide-preview"></div>
-            <label class="area">Titre<input id="slide-titre" maxlength="120"></label>
-            <label class="area">Texte lu aux joueurs<textarea id="slide-texte" rows="5" maxlength="3000"></textarea></label>
-            <div class="fig-label">Thème</div>
-            <div id="slide-styles" class="chips"></div>
-            <div class="fig-label">Image</div>
+            <div id="step-slide" class="col">
+              <label class="area">Titre<input id="slide-titre" maxlength="120"></label>
+              <label class="area">Texte lu aux joueurs<textarea id="slide-texte" rows="5" maxlength="3000"></textarea></label>
+              <div class="fig-label">Thème</div>
+              <div id="slide-styles" class="chips"></div>
+              <div class="fig-label">Image</div>
+              <div class="row wrap">
+                <label class="file-btn small-file">📷 Importer…<input type="file" id="slide-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+                <select id="slide-scene" title="Reprendre une carte déjà importée"><option value="">— ou une carte —</option></select>
+                <button id="slide-noimg" class="small">Sans image</button>
+              </div>
+            </div>
+            <div id="step-carte" class="col">
+              <label class="check">Carte affichée <select id="step-scene"></select></label>
+              <p class="muted tiny">À cette étape, la présentation s'efface et cette carte s'affiche sur la table de tous les joueurs.</p>
+            </div>
             <div class="row wrap">
-              <label class="file-btn small-file">📷 Importer…<input type="file" id="slide-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
-              <select id="slide-scene" title="Reprendre une carte déjà importée"><option value="">— ou une carte —</option></select>
-              <button id="slide-noimg" class="small">Sans image</button>
+              <label class="check">Transition <select id="step-transition">
+                <option value="fondu">Fondu</option><option value="noir">Fondu au noir</option><option value="aucune">Coupure nette</option>
+              </select></label>
+              <label class="check" title="Se lance chez tout le monde quand cette étape arrive">Musique <select id="slide-musique"></select></label>
             </div>
             <div class="row">
               <button id="slide-up" class="small" title="Monter">▲</button>
               <button id="slide-down" class="small" title="Descendre">▼</button>
               <span class="spacer"></span>
               <button id="slide-delete" class="danger small">Supprimer</button>
-              <button id="slide-show" class="primary small">▶ Projeter celle-ci</button>
+              <button id="slide-show" class="primary small">▶ Lancer d'ici</button>
             </div>
           </div>
         </div>
-      
+      </section>
+
+      <!-- Cartes : import, battle maps, grille -->
+      <section id="seance-cartes" class="col" hidden>
+        <form id="scene-form" class="col">
+          <input id="scene-titre" placeholder="Titre (ex : La crypte oubliée)" maxlength="60">
+          <label class="check">Battle map ? <input type="number" id="scene-cols" min="2" max="300" class="w70" placeholder="—"> cases en largeur <span class="muted tiny">(si l'image a une grille)</span></label>
+          <div class="row">
+            <input type="file" id="scene-file" accept="image/png,image/jpeg,image/webp,image/gif" required>
+            <button class="primary">Ajouter</button>
+          </div>
+        </form>
+        <ul id="scene-list" class="list"></ul>
+        <div class="row">
+          <button id="mj-battlemap" class="small">🗺 Créer une battle map</button>
+          <button id="scene-none" class="small">Afficher un fond vierge</button>
+        </div>
+
+        
+        <h3>Grille</h3>
+        <div class="row">
+          <label class="check"><input type="checkbox" id="grid-on"> Afficher la grille</label>
+          <label class="check">Case <input type="number" id="grid-size" min="10" max="400" class="w70"> px</label>
+        </div>
+      </section>
     </div>
   </div>
   <div class="mj-panel" id="mjp-partie" hidden>
@@ -667,6 +660,12 @@
   <div class="projection-bar">
     <span id="projection-count" class="projection-count"></span>
     <span class="spacer"></span>
+    <span class="mj-only row proj-music" title="Musique jouée chez tout le monde">
+      <span aria-hidden="true">🎵</span>
+      <select id="proj-music" title="Changer la musique"></select>
+      <button id="proj-music-stop" class="small" title="Couper la musique">⏹</button>
+      <input type="range" id="proj-music-vol" min="0" max="100" title="Volume pour tout le monde">
+    </span>
     <span class="mj-only row">
       <button id="proj-prev" class="small">◀ Précédente</button>
       <button id="proj-next" class="primary small">Suivante ▶</button>
@@ -676,6 +675,17 @@
   </div>
 </div>
 <button id="projection-pill" class="projection-pill" hidden>📽 Présentation en cours — afficher</button>
+
+<!-- Déroulé arrêté sur une carte : commandes du MJ pour passer à l'étape suivante -->
+<div id="seq-bar" class="seq-bar mj-only" hidden>
+  <span id="seq-count" class="seq-count"></span>
+  <button id="seq-prev" class="small" title="Étape précédente (Page préc.)">◀</button>
+  <button id="seq-next" class="primary small" title="Étape suivante (Page suiv.)">Suivante ▶</button>
+  <button id="seq-stop" class="danger small" title="Terminer le déroulé">■</button>
+</div>
+
+<!-- Voile de transition entre deux étapes du déroulé (tout le monde) -->
+<div id="transition" class="transition" hidden></div>
 
 <div id="toast" class="toast" hidden></div>
 

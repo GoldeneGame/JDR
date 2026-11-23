@@ -1044,6 +1044,7 @@ function renderMj() {
     el('span', { class: 'grow', text: s.titre }),
     s.id === S.scene.actif ? el('span', { class: 'tag', text: 'affichée' })
       : el('button', { class: 'tiny-btn', onclick: () => socket.emit('scene:activer', { id: s.id }) }, 'Afficher'),
+    el('button', { class: 'tiny-btn', title: 'Ajouter cette carte au déroulé (après l\'étape sélectionnée)', onclick: () => ajouterCarteAuDeroule(s.id) }, '＋ Déroulé'),
     el('button', { class: 'tiny-btn', title: 'Supprimer', onclick: () => { if (confirm(`Supprimer la scène « ${s.titre} » ?`)) socket.emit('scene:supprimer', { id: s.id }); } }, '✕'))));
 
   // Grille

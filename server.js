@@ -31,7 +31,7 @@ function readJson(file, fallback) {
 }
 
 const CONFIG_FILE = path.join(ROOT, 'config.json');
-const DEFAULT_CONFIG = { port: 3000, motDePasseMJ: 'dragon', tunnelCloudflare: true, ouvrirNavigateur: true, cleApiAnthropic: '' };
+const DEFAULT_CONFIG = { port: 3000, motDePasseMJ: 'dragon', tunnelCloudflare: true, ouvrirNavigateur: true };
 if (!fs.existsSync(CONFIG_FILE)) {
   try { fs.writeFileSync(CONFIG_FILE, JSON.stringify(DEFAULT_CONFIG, null, 2)); } catch { /* dossier en lecture seule */ }
 }
@@ -300,9 +300,21 @@ function sortInitiative() {
 const SLIDE_STYLES = ['parchemin', 'sombre', 'sang', 'mystique', 'nature', 'glace', 'epique'];
 state.slides = Object.assign({ decks: [], projection: null }, state.slides || {});
 
+const TRANSITIONS = ['fondu', 'noir', 'aucune'];
+
+/** Étape d'un déroulé : une slide projetée, ou une carte (scène) affichée sur la table. */
 function newSlide(p = {}) {
-  return {
+  const commun = {
     id: uid(),
+    // musique lancée quand l'étape arrive : null = ne rien changer, 'stop' = couper, sinon une piste
+    musique: typeof p.musique === 'string' && /^(stop|f:[\w-]{1,40}|[a-z]{2,20})$/.test(p.musique) ? p.musique : null,
+    transition: TRANSITIONS.includes(p.transition) ? p.transition : 'fondu',
+  };
+  if (p.type === 'carte') {
+    return { ...commun, type: 'carte', sceneId: typeof p.sceneId === 'string' ? p.sceneId.slice(0, 40) : null };
+  }
+  return {
+    ...commun,
     titre: str(p.titre, 120),
     texte: str(p.texte, 3000),
     style: SLIDE_STYLES.includes(p.style) ? p.style : 'parchemin',
@@ -311,97 +323,31 @@ function newSlide(p = {}) {
 }
 const findDeck = (id) => state.slides.decks.find((d) => d.id === id);
 
+/** Applique l'étape qui vient d'arriver : sa musique, et la carte à afficher s'il s'agit d'une carte. */
+function appliquerEtape() {
+  const p = state.slides.projection;
+  const etape = p && findDeck(p.deckId)?.slides[p.index];
+  if (!etape) return;
+  const m = etape.musique;
+  if (m === 'stop') musique.piste = null;
+  else if (m && (PISTES_MUSIQUE.includes(m) || (m.startsWith('f:') && state.musiquesPerso.some((x) => 'f:' + x.id === m)))) musique.piste = m;
+  if (etape.type === 'carte') {
+    const sc = state.scenes.find((s) => s.id === etape.sceneId);
+    if (sc && state.scene.actif !== sc.id) {
+      state.scene.actif = sc.id;
+      system(`Nouvelle scène : ${sc.titre}`);
+    }
+  }
+}
+
 /** Slide projetée en ce moment (ce que voient les joueurs), ou null. */
 function currentProjection() {
   const p = state.slides.projection;
   const deck = p && findDeck(p.deckId);
   const slide = deck && deck.slides[p.index];
   if (!slide) return null;
-  return { deckId: deck.id, deckTitre: deck.titre, index: p.index, total: deck.slides.length, ...slide };
-}
-
-// ---- génération par l'IA (Claude)
-const IA_MODEL = 'claude-opus-5-5';
-const iaKey = () => String(config.cleApiAnthropic || process.env.ANTHROPIC_API_KEY || '').trim();
-let anthropicClient = null;
-function getAnthropic() {
-  if (!iaKey()) return null;
-  if (!anthropicClient) {
-    const Anthropic = require('@anthropic-ai/sdk').default;
-    anthropicClient = new Anthropic({ apiKey: iaKey() });
-  }
-  return anthropicClient;
-}
-
-const SLIDES_SCHEMA = {
-  type: 'object',
-  properties: {
-    slides: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          titre: { type: 'string' },
-          texte: { type: 'string' },
-          style: { type: 'string', enum: SLIDE_STYLES },
-        },
-        required: ['titre', 'texte', 'style'],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: ['slides'],
-  additionalProperties: false,
-};
-
-const SLIDES_SYSTEM = `Tu aides le maître du jeu (MJ) d'une partie de jeu de rôle médiéval-fantastique, dans l'esprit de Donjons & Dragons, en français.
-Tu rédiges des slides qui seront projetées sur l'écran de tous les joueurs pendant la séance, pendant que le MJ les lit à voix haute.
-
-Pour chaque slide :
-- "titre" : court et évocateur (6 mots au maximum), comme un titre de chapitre ou le nom d'un lieu ou d'un personnage.
-- "texte" : un texte d'ambiance de 2 à 5 phrases, à lire à voix haute. Écris pour les joueurs, au présent, en t'adressant à eux ("vous"). Fais appel aux sens (bruits, odeurs, lumière, température) et donne un ou deux détails concrets sur lesquels les joueurs pourront agir.
-- "style" : le thème visuel qui correspond le mieux à l'ambiance de la slide (parchemin = neutre ou récit, sombre = danger ou nuit, sang = combat ou horreur, mystique = magie ou divin, nature = forêt ou extérieur, glace = froid ou montagne, epique = victoire ou révélation majeure).
-
-Les joueurs lisent ces slides : ne révèle jamais de secret du scénario, de statistique de jeu ni d'information que leurs personnages ne peuvent pas percevoir. Ne décide jamais à la place des joueurs de ce que font, disent ou ressentent leurs personnages ; termine plutôt sur une situation ouverte qui les invite à agir.
-Les slides se suivent dans l'ordre de la séance et forment une progression cohérente.`;
-
-async function generateSlides({ prompt, nombre, ton, deck, groupe }) {
-  const client = getAnthropic();
-  if (!client) throw new Error('Aucune clé API Anthropic : ajoute "cleApiAnthropic" dans config.json puis relance l\'application.');
-  const lignes = [`Demande du MJ : ${prompt}`, `Nombre de slides à rédiger : ${nombre}.`];
-  if (ton) lignes.push(`Ton souhaité : ${ton}.`);
-  if (groupe.length) lignes.push(`Personnages joueurs du groupe : ${groupe.join(' ; ')}.`);
-  if (deck && deck.slides.length) {
-    lignes.push(`Le diaporama « ${deck.titre} » contient déjà ces slides, dans l'ordre ; les nouvelles viennent à la suite :\n`
-      + deck.slides.map((s, i) => `${i + 1}. ${s.titre}`).join('\n'));
-  }
-
-  const response = await client.beta.messages.create({
-    model: IA_MODEL,
-    max_tokens: 16000,
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
-    output_config: { effort: 'medium', format: { type: 'json_schema', schema: SLIDES_SCHEMA } },
-    system: SLIDES_SYSTEM,
-    messages: [{ role: 'user', content: lignes.join('\n\n') }],
-  });
-
-  if (response.stop_reason === 'refusal') throw new Error('Claude a refusé cette demande. Reformule-la autrement.');
-  if (response.stop_reason === 'max_tokens') throw new Error('La réponse était trop longue : demande moins de slides.');
-  const text = response.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
-  let data;
-  try { data = JSON.parse(text); } catch { throw new Error('Réponse illisible de l\'IA, réessaie.'); }
-  return (data.slides || []).slice(0, nombre).map(newSlide);
-}
-
-function iaErrorMessage(e) {
-  const Anthropic = require('@anthropic-ai/sdk').default;
-  if (e instanceof Anthropic.AuthenticationError) return 'Clé API Anthropic invalide (vérifie "cleApiAnthropic" dans config.json).';
-  if (e instanceof Anthropic.PermissionDeniedError) return 'Cette clé API n\'a pas accès au modèle.';
-  if (e instanceof Anthropic.RateLimitError) return 'Trop de demandes en peu de temps : patiente un instant puis réessaie.';
-  if (e instanceof Anthropic.APIConnectionError) return 'Impossible de joindre l\'IA : vérifie la connexion Internet.';
-  if (e instanceof Anthropic.APIError) return `Erreur de l'IA (${e.status || '?'}) : ${e.message}`;
-  return e.message || 'Erreur inconnue';
+  const extra = slide.type === 'carte' ? { titre: (state.scenes.find((sc) => sc.id === slide.sceneId) || {}).titre || 'Carte' } : {};
+  return { deckId: deck.id, deckTitre: deck.titre, index: p.index, total: deck.slides.length, ...slide, ...extra };
 }
 
 // ---------------------------------------------------------------- serveur
@@ -523,7 +469,7 @@ function viewFor(so) {
     musique,
     musiquesPerso: state.musiquesPerso,
     bestiaire: isMj ? BESTIAIRE.map(({ id, nom, fp, pv, pvMoyen, ca, emb, taille, attaque, degats }) => ({ id, nom, fp, pv, pvMoyen, ca, emb, taille: taille || 1, attaque, degats })) : null,
-    slides: isMj ? { decks: state.slides.decks, ia: !!iaKey() } : null,
+    slides: isMj ? { decks: state.slides.decks } : null,
   };
 }
 
@@ -1381,7 +1327,7 @@ io.on('connection', (socket) => {
   const changed = () => { broadcastState(); save(); };
 
   socket.on('slides:deck:create', mjOnly(({ titre } = {}, ack) => {
-    const deck = { id: uid(), titre: str(titre, 80).trim() || 'Nouveau diaporama', slides: [] };
+    const deck = { id: uid(), titre: str(titre, 80).trim() || 'Nouveau déroulé', slides: [] };
     state.slides.decks.push(deck);
     changed();
     ok(ack, { id: deck.id });
@@ -1398,10 +1344,12 @@ io.on('connection', (socket) => {
     changed();
   }));
 
-  socket.on('slides:slide:add', mjOnly(({ deckId, after } = {}, ack) => {
+  socket.on('slides:slide:add', mjOnly(({ deckId, after, type, sceneId } = {}, ack) => {
     const deck = findDeck(deckId);
-    if (!deck) return fail(ack, 'Diaporama introuvable');
-    const slide = newSlide({ titre: 'Nouvelle slide' });
+    if (!deck) return fail(ack, 'Déroulé introuvable');
+    if (deck.slides.length >= 200) return fail(ack, 'Ce déroulé est plein (200 étapes).');
+    if (type === 'carte' && !state.scenes.some((sc) => sc.id === sceneId)) return fail(ack, 'Carte introuvable.');
+    const slide = type === 'carte' ? newSlide({ type: 'carte', sceneId }) : newSlide({ titre: 'Nouvelle slide' });
     const i = deck.slides.findIndex((s) => s.id === after);
     deck.slides.splice(i >= 0 ? i + 1 : deck.slides.length, 0, slide);
     changed();
@@ -1410,8 +1358,19 @@ io.on('connection', (socket) => {
   socket.on('slides:slide:update', mjOnly(({ deckId, slideId, patch } = {}) => {
     const slide = findDeck(deckId)?.slides.find((s) => s.id === slideId);
     if (!slide || !patch) return;
-    const clean = newSlide({ ...slide, ...patch });
-    Object.assign(slide, { titre: clean.titre, texte: clean.texte, style: clean.style, image: 'image' in patch ? clean.image : slide.image });
+    if (patch.sceneId !== undefined && !state.scenes.some((sc) => sc.id === patch.sceneId)) delete patch.sceneId;
+    const clean = newSlide({ ...slide, ...patch, type: slide.type }); // le type d'une étape ne change pas
+    const commun = {
+      musique: 'musique' in patch ? clean.musique : (slide.musique || null),
+      transition: clean.transition,
+    };
+    if (slide.type === 'carte') Object.assign(slide, commun, { sceneId: clean.sceneId });
+    else {
+      Object.assign(slide, commun, {
+        titre: clean.titre, texte: clean.texte, style: clean.style,
+        image: 'image' in patch ? clean.image : slide.image,
+      });
+    }
     changed();
   }));
   socket.on('slides:slide:delete', mjOnly(({ deckId, slideId } = {}) => {
@@ -1443,39 +1402,20 @@ io.on('connection', (socket) => {
     ok(ack);
   }));
 
-  socket.on('slides:generate', mjOnly(async ({ deckId, prompt, nombre, ton, inclureGroupe } = {}, ack) => {
-    const deck = findDeck(deckId);
-    prompt = str(prompt, 2000).trim();
-    if (!deck) return fail(ack, 'Choisis ou crée d\'abord un diaporama.');
-    if (!prompt) return fail(ack, 'Décris ce que les slides doivent raconter.');
-    const groupe = inclureGroupe
-      ? Object.values(state.characters).map((c) => [c.name, c.race, c.classe && `${c.classe} niv. ${c.niveau}`].filter(Boolean).join(', '))
-      : [];
-    try {
-      const slides = await generateSlides({ prompt, nombre: num(nombre, 1, 10, 3), ton: str(ton, 40), deck, groupe });
-      if (!slides.length) return fail(ack, 'L\'IA n\'a renvoyé aucune slide, réessaie.');
-      const target = findDeck(deckId); // le diaporama a pu être supprimé pendant la génération
-      if (!target) return fail(ack, 'Le diaporama a été supprimé entre-temps.');
-      target.slides.push(...slides);
-      changed();
-      ok(ack, { ajoutees: slides.length, premier: slides[0].id });
-    } catch (e) {
-      console.error('Génération de slides :', e.message);
-      fail(ack, iaErrorMessage(e));
-    }
-  }));
-
   socket.on('slides:present', mjOnly(({ deckId, index } = {}) => {
     const deck = findDeck(deckId);
     if (!deck || !deck.slides.length) return;
     state.slides.projection = { deckId, index: num(index, 0, deck.slides.length - 1, 0) };
+    appliquerEtape();
     changed();
   }));
   socket.on('slides:step', mjOnly(({ dir } = {}) => {
     const p = state.slides.projection;
     const deck = p && findDeck(p.deckId);
     if (!deck) return;
+    const avant = p.index;
     p.index = Math.min(deck.slides.length - 1, Math.max(0, p.index + (dir < 0 ? -1 : 1)));
+    if (p.index !== avant) appliquerEtape();
     changed();
   }));
   socket.on('slides:stop', mjOnly(() => {

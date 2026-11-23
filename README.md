@@ -3,7 +3,7 @@
 Application de jeu de rôle (style Donjons & Dragons) hébergée sur le PC du MJ.
 Les joueurs n'installent rien : ils ouvrent un lien dans leur navigateur (PC, tablette ou téléphone).
 
-Les outils du MJ sont dans le **bandeau du haut** : 🔗 Inviter, 🗺 Cartes, 👹 Monstres, ♟ Pions, 🌫 Brouillard, 💡 Éclairage, 🎵 Musique, 📽 Slides, ⚙ Partie.
+Les outils du MJ sont dans le **bandeau du haut** : 🔗 Inviter, 🎬 Séance, 👹 Monstres, ♟ Pions, 🌫 Brouillard, 💡 Éclairage, 🎵 Musique, ⚙ Partie.
 Chaque bouton ouvre un panneau par-dessus la carte (re-clic, ✕ ou Échap pour le fermer). La colonne de droite garde
 le journal, les fiches, l'apparence des pions et l'initiative.
 
@@ -58,7 +58,7 @@ du port 3000 sur ta box. Le tunnel Cloudflare reste le plus simple.
 | Dégâts et soins sur les joueurs et les monstres (nombre ou formule de dés, plusieurs cibles, moitié) | — | ✔ |
 | Pions vivants : ils se balancent en permanence, respirent, clignent des yeux, leur cape ondule ; ils marchent quand on les déplace | ✔ | ✔ |
 | Musique d'ambiance (taverne, voyage, forêt, feu de camp, donjon, mystère, combat, boss, victoire, deuil, orage) ou tes propres fichiers (MP3…), lancée par le MJ chez tout le monde | l'entend, règle son volume | lance, change, arrête |
-| Diaporamas (slides) projetés en plein écran chez tous les joueurs, générés par l'IA ou faits à la main | les voit | crée, génère, projette |
+| Diaporamas (slides) projetés en plein écran chez tous les joueurs | les voit | crée, projette |
 
 Sur les boutons de dés : clic = ajouter un dé, clic droit = en retirer un. Animation et son se coupent sous le bouton Lancer.
 Raccourcis du chat : `/r 1d20+5 Attaque` (jet public), `/sr 1d20` (jet secret).
@@ -67,7 +67,7 @@ Onglet **Pion** (ou double-clic sur ton pion) : personnalise son apparence (pers
 
 ## Battle maps
 
-Bouton **🖌 Éditer la carte** (au-dessus de la carte) ou menu **🗺 Cartes → Créer une battle map** : choisis la taille
+Bouton **🖌 Éditer la carte** (au-dessus de la carte) ou menu **🎬 Séance → onglet 🗺 Cartes → Créer une battle map** : choisis la taille
 (en cases) et le sol de fond, puis peins :
 
 - **Pinceau** (taille 1, 2 ou 3 cases), **Rectangle** (glisse pour remplir une zone), **Ligne** (droite horizontale ou verticale, idéale pour les murs), **Salle** (murs sur le pourtour + sol à l'intérieur, en un seul geste), **Remplir** (toute une zone identique) ;
@@ -175,23 +175,25 @@ La musique est envoyée aux joueurs par ton PC : avec une petite connexion, pré
 Créé automatiquement à côté de l'exe au premier lancement :
 
 ```json
-{ "port": 3000, "motDePasseMJ": "dragon", "tunnelCloudflare": true, "ouvrirNavigateur": true, "cleApiAnthropic": "" }
+{ "port": 3000, "motDePasseMJ": "dragon", "tunnelCloudflare": true, "ouvrirNavigateur": true }
 ```
 
 Change le mot de passe du MJ avant de partager le lien sur Internet. Relance l'application après une modification.
 
-## Slides générées par l'IA
+## Séance : slides et cartes à la suite
 
-Menu **📽 Slides** (MJ) : crée un diaporama, puis décris la scène (« les héros arrivent de nuit au village de Brumeval… »),
-choisis le nombre de slides et le ton, et clique sur **✨ Générer**. Claude rédige le titre, le texte d'ambiance
-à lire aux joueurs et choisit le thème visuel ; tout reste modifiable, et on peut ajouter une image (importée ou une carte).
-**▶ Projeter** affiche les slides en grand chez tous les joueurs ; le MJ avance avec les flèches du clavier ou les boutons.
+Menu **🎬 Séance** (MJ), deux onglets :
 
-Pour activer la génération :
-1. Crée une clé API sur https://console.anthropic.com (« API Keys »). L'usage est payant : quelques centimes par génération.
-2. Colle-la dans `config.json` : `"cleApiAnthropic": "sk-ant-…"`, puis relance l'application.
+- **🗺 Cartes & battle maps** : importer une carte, créer une battle map, afficher une carte, régler la grille.
+  Le bouton **＋ Déroulé** d'une carte l'ajoute à la séance.
+- **📜 Déroulé** : l'ordre de ta séance. Mélange des **slides** (**＋ Slide** : titre, texte d'ambiance, thème, image)
+  et des **cartes** (menu **＋ Carte…**), par exemple : slide d'intro → battle map de l'embuscade → slide « après le combat ».
+  Chaque étape a une **transition** (fondu, fondu au noir, coupure nette) et peut lancer une **musique** ou couper le son.
 
-Sans clé, tout fonctionne quand même : les slides se créent à la main. La clé reste sur ton PC (elle n'est jamais envoyée aux joueurs).
+**▶ Lancer** démarre le déroulé chez tous les joueurs ; le MJ avance avec les flèches du clavier (ou Page suiv. / Page préc.)
+ou les boutons. Sur une slide, elle s'affiche en grand ; sur une carte, la présentation s'efface et la carte apparaît sur la table,
+avec en bas une petite barre pour passer à l'étape suivante. Pendant une slide, le MJ garde aussi un 🎵 pour changer de musique,
+la couper ou régler le volume de tout le monde.
 
 ## Déplacer ou copier l'application
 
