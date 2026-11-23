@@ -1,0 +1,44 @@
+# À chaque push sur main : compile LaTaverne.exe et le publie en release GitHub.
+# Le launcher Winton surveille ces releases et propose la mise à jour automatiquement.
+name: Publier La Taverne
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publier
+  cancel-in-progress: false
+
+jobs:
+  publier:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: npm
+
+      - name: Dépendances
+        run: npm ci
+
+      - name: Construction de LaTaverne.exe
+        run: npm run build
+
+      - name: Publication de la release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v$(node -p "require('./package.json').version")-${{ github.run_number }}"
+          git log -1 --pretty=%B > notes.txt
+          gh release create "$TAG" dist/LaTaverne.exe \
+            --title "La Taverne $TAG" \
+            --notes-file notes.txt \
+            --target "${{ github.sha }}"
