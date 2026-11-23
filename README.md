@@ -189,6 +189,8 @@ Menu **🎬 Séance** (MJ), deux onglets :
 - **📜 Déroulé** : l'ordre de ta séance. Mélange des **slides** (**＋ Slide** : titre, texte d'ambiance, thème, image)
   et des **cartes** (menu **＋ Carte…**), par exemple : slide d'intro → battle map de l'embuscade → slide « après le combat ».
   Chaque étape a une **transition** (fondu, fondu au noir, coupure nette) et peut lancer une **musique** ou couper le son.
+  Les étapes s'affichent en **mosaïque** (▦) ou en liste (☰) : **glisse-les** pour changer l'ordre, double-clic pour lancer.
+  Chaque étape peut porter un **sigle** (⚔ combat, 💬 dialogue, 💀 boss… ou quelques lettres comme A1) pour t'y retrouver.
 
 **▶ Lancer** démarre le déroulé chez tous les joueurs ; le MJ avance avec les flèches du clavier (ou Page suiv. / Page préc.)
 ou les boutons. Sur une slide, elle s'affiche en grand ; sur une carte, la présentation s'efface et la carte apparaît sur la table,

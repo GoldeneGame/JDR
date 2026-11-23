@@ -553,11 +553,16 @@
 
           <div class="row wrap">
             <strong class="grow">Étapes</strong>
+            <span class="vue-toggle" role="group" aria-label="Affichage des étapes">
+              <button type="button" class="tiny-btn" data-vue="liste" title="Liste">☰</button>
+              <button type="button" class="tiny-btn" data-vue="mosaique" title="Mosaïque">▦</button>
+            </span>
             <button id="slide-add" class="small" title="Ajouter une slide après l'étape sélectionnée">＋ Slide</button>
             <select id="step-add-carte" title="Ajouter une carte ou une battle map après l'étape sélectionnée"></select>
             <button id="deck-present" class="primary small">▶ Lancer</button>
           </div>
           <ol id="slide-list" class="slide-list"></ol>
+          <p class="muted tiny">Glisse les étapes pour changer leur ordre.</p>
 
           <!-- Édition de l'étape sélectionnée -->
           <div id="slide-editor" class="slide-editor">
@@ -577,6 +582,10 @@
             <div id="step-carte" class="col">
               <label class="check">Carte affichée <select id="step-scene"></select></label>
               <p class="muted tiny">À cette étape, la présentation s'efface et cette carte s'affiche sur la table de tous les joueurs.</p>
+            </div>
+            <div class="row wrap">
+              <label class="check" title="Un emoji ou quelques lettres pour repérer l'étape (ex. ⚔, A1, BOSS)">Sigle <input id="step-sigle" class="step-sigle" maxlength="12" placeholder="—"></label>
+              <div id="step-sigles" class="chips sigles"></div>
             </div>
             <div class="row wrap">
               <label class="check">Transition <select id="step-transition">

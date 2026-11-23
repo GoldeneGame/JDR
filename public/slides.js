@@ -6,7 +6,13 @@ const SLIDE_THEMES = [['parchemin', 'Parchemin'], ['sombre', 'Sombre'], ['sang',
 
 const sceneDe = (id) => ((S && S.scenes) || []).find((sc) => sc.id === id);
 /** Aperçu d'une scène : son image, ou la texture de son sol pour une battle map peinte. */
-const apercuScene = (sc) => (sc.image ? sc.image : terrainTexture(sc.fond || 'herbe', 64, 0).toDataURL());
+const texturesApercu = new Map();
+const apercuScene = (sc) => {
+  if (sc.image) return sc.image;
+  const fond = sc.fond || 'herbe';
+  if (!texturesApercu.has(fond)) texturesApercu.set(fond, terrainTexture(fond, 64, 0).toDataURL());
+  return texturesApercu.get(fond);
+};
 
 /** Rendu d'une étape (projection, aperçu, vignettes) : une slide, ou la carte qu'elle affiche. */
 function slideElement(s) {
@@ -111,6 +117,20 @@ $('#slide-file').addEventListener('change', (ev) => {
 });
 $('#slide-musique').addEventListener('change', (ev) => patchSlide({ musique: ev.target.value || null }, true));
 $('#step-transition').addEventListener('change', (ev) => patchSlide({ transition: ev.target.value }, true));
+$('#step-sigle').addEventListener('input', (ev) => patchSlide({ sigle: ev.target.value }));
+// sigles proposés : un clic l'applique, un second clic sur le même l'enlève
+const SIGLES = [['⚔', 'Combat'], ['💬', 'Dialogue'], ['🧭', 'Exploration'], ['💀', 'Boss'], ['🧩', 'Énigme'], ['🎁', 'Trésor'],
+  ['🏰', 'Lieu'], ['⭐', 'Important'], ['❓', 'Optionnel'], ['🌙', 'Repos']];
+$('#step-sigles').append(...SIGLES.map(([sg, nom]) => el('button', {
+  type: 'button', class: 'chip', title: nom, 'data-sigle': sg, text: sg,
+  onclick: () => {
+    const s = curSlide();
+    if (!s) return;
+    patchSlide({ sigle: s.sigle === sg ? '' : sg }, true);
+    $('#step-sigle').value = curSlide().sigle;
+    renderSlides();
+  },
+})));
 $('#step-scene').addEventListener('change', (ev) => { if (ev.target.value) patchSlide({ sceneId: ev.target.value }, true); });
 
 /** Ajoute une carte (scène) au déroulé, après l'étape sélectionnée. Utilisé aussi depuis l'onglet Cartes. */
@@ -150,19 +170,95 @@ $('#deck-present').addEventListener('click', () => {
   socket.emit('slides:present', { deckId, index: 0 });
 });
 
+// affichage des étapes : liste compacte ou mosaïque de vignettes (mémorisé sur ce navigateur)
+let vueEtapes = (() => { try { return localStorage.getItem('taverne.vueEtapes') || 'mosaique'; } catch { return 'mosaique'; } })();
+$$('[data-vue]').forEach((b) => b.addEventListener('click', () => {
+  vueEtapes = b.dataset.vue;
+  try { localStorage.setItem('taverne.vueEtapes', vueEtapes); } catch { /* navigation privée */ }
+  renderSlideList();
+}));
+
+let glisse = null; // étape en cours de glisser-déposer (on ne reconstruit pas la liste pendant ce temps)
+const nomEtape = (s) => (s.type === 'carte' ? ((sceneDe(s.sceneId) || {}).titre || '⚠ Carte supprimée') : (s.titre || 'Sans titre'));
+function iconesEtape(s) {
+  return [
+    s.transition === 'noir' ? el('span', { text: '◐', title: 'Fondu au noir' }) : s.transition === 'aucune' ? el('span', { text: '⇥', title: 'Coupure nette' }) : null,
+    s.musique ? el('span', { text: s.musique === 'stop' ? '🔇' : '🎵', title: s.musique === 'stop' ? 'Coupe la musique' : nomMusique(s.musique) || 'Musique supprimée' }) : null,
+    s.type !== 'carte' && s.image ? el('span', { text: '🖼' }) : null,
+  ];
+}
+
+/** Glisser-déposer : la position visée dépend du côté de l'étape survolée (gauche/droite en mosaïque, haut/bas en liste). */
+function brancherGlisser(li, s, i, liste) {
+  li.draggable = true;
+  li.addEventListener('dragstart', (ev) => {
+    flushSlide();
+    glisse = { id: s.id, from: i, to: i };
+    ev.dataTransfer.effectAllowed = 'move';
+    ev.dataTransfer.setData('text/plain', s.id);
+    setTimeout(() => li.classList.add('dragging'), 0);
+  });
+  li.addEventListener('dragover', (ev) => {
+    if (!glisse) return;
+    ev.preventDefault();
+    const r = li.getBoundingClientRect();
+    const apres = liste.classList.contains('mosaique') ? ev.clientX > r.left + r.width / 2 : ev.clientY > r.top + r.height / 2;
+    let to = i + (apres ? 1 : 0);
+    if (to > glisse.from) to -= 1; // l'étape quitte sa place avant d'être réinsérée
+    glisse.to = to;
+    $$('.drop-avant, .drop-apres', liste).forEach((x) => x.classList.remove('drop-avant', 'drop-apres'));
+    if (s.id !== glisse.id) li.classList.add(apres ? 'drop-apres' : 'drop-avant');
+  });
+  li.addEventListener('drop', (ev) => {
+    ev.preventDefault();
+    if (glisse && glisse.to !== glisse.from) socket.emit('slides:slide:move', { deckId, slideId: glisse.id, index: glisse.to });
+  });
+  li.addEventListener('dragend', () => { glisse = null; renderSlideList(); });
+}
+
+// double-clic sur une étape : la lancer (délégué, car le premier clic reconstruit la liste)
+$('#slide-list').addEventListener('dblclick', (ev) => {
+  const li = ev.target.closest('[data-i]');
+  if (li) { flushSlide(); socket.emit('slides:present', { deckId, index: Number(li.dataset.i) }); }
+});
+
 function renderSlideList() {
   const d = curDeck();
-  if (!d) return;
-  $('#slide-list').replaceChildren(...d.slides.map((s, i) => el('li', {
-    class: 'slide-item' + (s.type === 'carte' ? ' etape-carte' : '') + (s.id === slideId ? ' active' : '') + (S.projection && S.projection.deckId === d.id && S.projection.index === i ? ' live' : ''),
-    onclick: () => { flushSlide(); slideId = s.id; renderSlides(); },
-  },
-  el('span', { class: 'slide-num', text: i + 1 }),
-  s.type === 'carte' ? el('span', { text: '🗺', title: 'Carte' }) : el('span', { class: `slide-dot theme-${s.style}` }),
-  el('span', { class: 'grow', text: s.type === 'carte' ? ((sceneDe(s.sceneId) || {}).titre || '⚠ Carte supprimée') : (s.titre || 'Sans titre') }),
-  s.transition === 'noir' ? el('span', { class: 'muted tiny', text: '◐', title: 'Fondu au noir' }) : s.transition === 'aucune' ? el('span', { class: 'muted tiny', text: '⇥', title: 'Coupure nette' }) : null,
-  s.musique ? el('span', { class: 'muted tiny', text: s.musique === 'stop' ? '🔇' : '🎵', title: s.musique === 'stop' ? 'Coupe la musique' : nomMusique(s.musique) || 'Musique supprimée' }) : null,
-  s.image ? el('span', { class: 'muted tiny', text: '🖼' }) : null)));
+  if (!d || glisse) return;
+  const liste = $('#slide-list');
+  const mosaique = vueEtapes === 'mosaique';
+  liste.classList.toggle('mosaique', mosaique);
+  $$('[data-vue]').forEach((b) => b.classList.toggle('active', b.dataset.vue === vueEtapes));
+  const enDirect = (i) => S.projection && S.projection.deckId === d.id && S.projection.index === i;
+  liste.replaceChildren(...d.slides.map((s, i) => {
+    const li = el('li', {
+      class: 'slide-item' + (s.type === 'carte' ? ' etape-carte' : '') + (s.id === slideId ? ' active' : '') + (enDirect(i) ? ' live' : ''),
+      title: nomEtape(s) + ' — double-clic pour la lancer',
+      onclick: () => { flushSlide(); slideId = s.id; renderSlides(); },
+      'data-i': i,
+    });
+    if (mosaique) {
+      li.append(
+        el('div', { class: 'tuile-apercu' }, slideElement(s)),
+        el('span', { class: 'tuile-num', text: i + 1 }),
+        s.sigle ? el('span', { class: 'tuile-sigle', text: s.sigle }) : null,
+        enDirect(i) ? el('span', { class: 'tuile-live', text: '● direct' }) : null,
+        el('div', { class: 'tuile-pied' },
+          el('span', { class: 'grow tuile-nom', text: (s.type === 'carte' ? '🗺 ' : '') + nomEtape(s) }),
+          ...iconesEtape(s)));
+    } else {
+      li.append(
+        el('span', { class: 'slide-num', text: i + 1 }),
+        s.type === 'carte' ? el('span', { text: '🗺', title: 'Carte' }) : el('span', { class: `slide-dot theme-${s.style}` }),
+        s.sigle ? el('span', { class: 'liste-sigle', text: s.sigle }) : null,
+        el('span', { class: 'grow', text: nomEtape(s) }),
+        el('span', { class: 'muted tiny' }, ...iconesEtape(s)));
+    }
+    brancherGlisser(li, s, i, liste);
+    return li;
+  }));
+  const actif = $('.slide-item.active', liste);
+  if (actif) actif.scrollIntoView({ block: 'nearest' });
 }
 function renderSlidePreview() {
   const s = curSlide();
@@ -198,6 +294,8 @@ function renderSlides() {
   const carte = s.type === 'carte';
   $('#step-slide').hidden = carte;
   $('#step-carte').hidden = !carte;
+  if (document.activeElement !== $('#step-sigle')) $('#step-sigle').value = s.sigle || '';
+  $$('#step-sigles [data-sigle]').forEach((b) => b.classList.toggle('active', b.dataset.sigle === s.sigle));
   if (document.activeElement !== $('#step-transition')) $('#step-transition').value = s.transition || 'fondu';
   if (carte) {
     const opts = sceneDe(s.sceneId) ? scenesOpts : [[s.sceneId || '', '⚠ Carte supprimée'], ...scenesOpts];
@@ -255,7 +353,7 @@ function renderProjection() {
     overlay.hidden = true;
     $('#projection-pill').hidden = true;
     shownKey = null;
-    $('#seq-count').textContent = `🎬 ${p.deckTitre} · ${p.index + 1} / ${p.total} · 🗺 ${p.titre}`;
+    $('#seq-count').textContent = `🎬 ${p.deckTitre} · ${p.index + 1} / ${p.total} · 🗺 ${p.sigle ? p.sigle + ' ' : ''}${p.titre}`;
     $('#seq-prev').disabled = p.index <= 0;
     $('#seq-next').disabled = p.index >= p.total - 1;
     return;

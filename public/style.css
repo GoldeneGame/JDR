@@ -503,6 +503,31 @@ button.small { padding: 3px 9px; font-size: 15px; }
 .slide-item.live::after { content: '● en direct'; color: #ff6b6b; font-size: 12px; font-weight: 700; }
 .slide-num { width: 20px; text-align: right; color: var(--muted); font-size: 13px; }
 .slide-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; border: 1px solid #fff4; }
+/* étapes : sigles, mosaïque, glisser-déposer */
+.vue-toggle { display: inline-flex; gap: 2px; }
+.vue-toggle .tiny-btn.active { border-color: var(--gold-2); color: var(--gold-2); background: #3a2d1d; }
+.liste-sigle { min-width: 22px; padding: 0 5px; border: 1px solid var(--gold); border-radius: 5px; text-align: center; color: var(--gold-2); font-weight: 700; font-size: 13px; }
+.step-sigle { width: 80px; text-align: center; font-weight: 700; }
+.chips.sigles .chip { padding: 2px 7px; font-size: 16px; }
+.slide-list.mosaique { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; max-height: 360px; padding: 2px; }
+.slide-list.mosaique .slide-item { position: relative; display: block; padding: 0; overflow: hidden; border-width: 2px; border-radius: 8px; }
+.slide-list.mosaique .slide-item.live::after { content: none; }
+.slide-list.mosaique .slide-item.live { border-color: #ff6b6b; }
+.tuile-apercu { pointer-events: none; }
+.tuile-apercu .slide { border-radius: 0; box-shadow: none; }
+.tuile-apercu .slide-carte-titre { display: none; }
+.tuile-num, .tuile-sigle, .tuile-live { position: absolute; top: 4px; padding: 1px 6px; border-radius: 5px; background: #000c; font-weight: 700; font-size: 13px; pointer-events: none; }
+.tuile-num { left: 4px; color: var(--gold-2); }
+.tuile-sigle { right: 4px; border: 1px solid var(--gold); color: #fff; font-size: 15px; }
+.tuile-live { left: 50%; transform: translateX(-50%); color: #ff6b6b; font-size: 11px; }
+.tuile-pied { display: flex; align-items: center; gap: 4px; padding: 3px 6px; font-size: 12px; }
+.tuile-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slide-item[draggable] { cursor: grab; }
+.slide-item.dragging { opacity: .35; }
+.slide-list .slide-item.drop-avant { box-shadow: 0 -3px 0 var(--gold-2); }
+.slide-list .slide-item.drop-apres { box-shadow: 0 3px 0 var(--gold-2); }
+.slide-list.mosaique .slide-item.drop-avant { box-shadow: -4px 0 0 var(--gold-2); }
+.slide-list.mosaique .slide-item.drop-apres { box-shadow: 4px 0 0 var(--gold-2); }
 .slide-editor { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
 .slide-preview .slide { border-radius: 8px; box-shadow: 0 6px 20px #000a; }
 .small-file { padding: 3px 10px; font-size: 15px; }

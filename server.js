@@ -309,6 +309,8 @@ function newSlide(p = {}) {
     // musique lancée quand l'étape arrive : null = ne rien changer, 'stop' = couper, sinon une piste
     musique: typeof p.musique === 'string' && /^(stop|f:[\w-]{1,40}|[a-z]{2,20})$/.test(p.musique) ? p.musique : null,
     transition: TRANSITIONS.includes(p.transition) ? p.transition : 'fondu',
+    // sigle libre du MJ (emoji ou quelques lettres) pour repérer l'étape dans le déroulé
+    sigle: typeof p.sigle === 'string' ? [...p.sigle.trim()].slice(0, 6).join('') : '',
   };
   if (p.type === 'carte') {
     return { ...commun, type: 'carte', sceneId: typeof p.sceneId === 'string' ? p.sceneId.slice(0, 40) : null };
@@ -1363,6 +1365,7 @@ io.on('connection', (socket) => {
     const commun = {
       musique: 'musique' in patch ? clean.musique : (slide.musique || null),
       transition: clean.transition,
+      sigle: 'sigle' in patch ? clean.sigle : (slide.sigle || ''),
     };
     if (slide.type === 'carte') Object.assign(slide, commun, { sceneId: clean.sceneId });
     else {
@@ -1381,13 +1384,20 @@ io.on('connection', (socket) => {
     if (p && p.deckId === deckId && p.index >= deck.slides.length) p.index = Math.max(0, deck.slides.length - 1);
     changed();
   }));
-  socket.on('slides:slide:move', mjOnly(({ deckId, slideId, dir } = {}) => {
+  // déplacement d'une étape : d'un cran (dir) ou à une position précise (index, glisser-déposer)
+  socket.on('slides:slide:move', mjOnly(({ deckId, slideId, dir, index } = {}) => {
     const deck = findDeck(deckId);
     if (!deck) return;
     const i = deck.slides.findIndex((s) => s.id === slideId);
-    const j = i + (dir < 0 ? -1 : 1);
-    if (i < 0 || j < 0 || j >= deck.slides.length) return;
-    [deck.slides[i], deck.slides[j]] = [deck.slides[j], deck.slides[i]];
+    if (i < 0) return;
+    const j = index !== undefined ? num(index, 0, deck.slides.length - 1, i) : i + (dir < 0 ? -1 : 1);
+    if (j === i || j < 0 || j >= deck.slides.length) return;
+    const p = state.slides.projection;
+    const enDirect = p && p.deckId === deckId ? deck.slides[p.index] : null;
+    const [etape] = deck.slides.splice(i, 1);
+    deck.slides.splice(j, 0, etape);
+    // la projection reste sur la même étape, pas sur la même position
+    if (enDirect) p.index = deck.slides.indexOf(enDirect);
     changed();
   }));
   socket.on('slides:slide:image', mjOnly(({ deckId, slideId, data } = {}, ack) => {
