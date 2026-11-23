@@ -180,6 +180,15 @@ Créé automatiquement à côté de l'exe au premier lancement :
 
 Change le mot de passe du MJ avant de partager le lien sur Internet. Relance l'application après une modification.
 
+## Taille et placement des pions
+
+- **Taille d'un pion** (onglet Pion, MJ) : curseur de 0,25 à 6 cases, valeur exacte, ou tailles toutes faites
+  (Minuscule, Petit, Moyen, Grand, Très grand, Gigantesque). Sur la carte : **Shift + molette** sur un pion pour l'ajuster finement.
+- **Taille des pions sur cette carte** (🎬 Séance → Cartes → Grille) : grossit ou réduit tous les pions de la carte active
+  (25 à 400 %), pour qu'ils collent aux cases dessinées sur ton image. Chaque carte garde son réglage.
+- **Aimanter les pions aux cases** : décoche pour poser les pions exactement où tu les lâches.
+  Avec l'aimant actif, maintiens **Alt** en lâchant un pion pour le poser librement une fois.
+
 ## Séance : slides et cartes à la suite
 
 Menu **🎬 Séance** (MJ), deux onglets :

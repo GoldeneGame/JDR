@@ -306,11 +306,23 @@ function renderTokens() {
         ev.preventDefault();
         openDegats([e.dataset.id], ev.clientX, ev.clientY);
       });
+      // MJ : Shift + molette sur un pion pour l'agrandir ou le réduire finement
+      e.addEventListener('wheel', (ev) => {
+        if (me.role !== 'mj' || !ev.shiftKey) return;
+        ev.preventDefault();
+        const tk = S.tokens[e.dataset.id];
+        if (!tk) return;
+        const d = ev.deltaY || ev.deltaX; // Shift transforme souvent la molette en défilement horizontal
+        tk.taille = Math.round(Math.min(6, Math.max(0.25, tk.taille + (d < 0 ? 0.05 : -0.05))) * 20) / 20;
+        renderTokens();
+        clearTimeout(e._tailleTimer);
+        e._tailleTimer = setTimeout(() => socket.emit('token:skin', { id: tk.id, taille: tk.taille }), 250);
+      }, { passive: false });
       e.addEventListener('dblclick', () => { const tk = S.tokens[e.dataset.id]; if (tk && canMove(tk)) openPion(tk.id); });
       layer.append(e);
       tokenEls.set(t.id, e);
     }
-    const size = cell * t.taille * 0.92;
+    const size = cell * t.taille * (S.scene.echellePions || 1) * 0.92;
     e.style.width = e.style.height = size + 'px';
     if (dragging !== t.id) { e.style.left = t.x + '%'; e.style.top = t.y + '%'; }
     applySkin(e.querySelector('.tk'), t, size);
@@ -334,10 +346,13 @@ function renderTokens() {
   for (const [id, e] of tokenEls) if (!seen.has(id)) { e.remove(); tokenEls.delete(id); }
 }
 
+/** Aimante un pion au centre des cases (si la grille est affichée et l'aimant actif). */
 function snap(p, t) {
-  if (!S.scene.grille) return p;
+  if (!S.scene.grille || S.scene.aimant === false) return p;
   const cell = S.scene.cellule;
-  const off = t.taille % 2 ? 0.5 : 0;
+  // nombre de cases couvertes : impair = centré sur une case, pair = sur une intersection
+  const n = Math.max(1, Math.round(t.taille * (S.scene.echellePions || 1)));
+  const off = n % 2 ? 0.5 : 0;
   const sx = (Math.round((p.x / 100) * imgSize.w / cell - off) + off) * cell;
   const sy = (Math.round((p.y / 100) * imgSize.h / cell - off) + off) * cell;
   return { x: clamp((sx / imgSize.w) * 100, 0, 100), y: clamp((sy / imgSize.h) * 100, 0, 100) };
@@ -368,7 +383,8 @@ function onTokenDown(ev) {
     e.removeEventListener('pointermove', move);
     e.removeEventListener('pointerup', up);
     e.removeEventListener('pointercancel', up);
-    const p = snap(pos(pe), t);
+    // Alt enfoncé au lâcher : placement libre, même avec l'aimant
+    const p = pe.altKey ? pos(pe) : snap(pos(pe), t);
     e.style.left = p.x + '%';
     e.style.top = p.y + '%';
     socket.emit('token:move', { id, ...p });
@@ -520,7 +536,16 @@ function renderFigEditor(f) {
 $('#pion-select').addEventListener('change', (ev) => { pionId = ev.target.value; renderPion(); });
 $('#pion-couleur').addEventListener('change', (ev) => sendSkin({ couleur: ev.target.value }));
 $('#pion-label').addEventListener('change', (ev) => sendSkin({ label: ev.target.value }));
+// taille du pion : curseur fin, valeur exacte, ou tailles toutes faites
+function majTailleUI(v) {
+  $('#pion-taille').value = v;
+  if (document.activeElement !== $('#pion-taille-num')) $('#pion-taille-num').value = v;
+  $$('#pion-tailles [data-t]').forEach((b) => b.classList.toggle('active', Number(b.dataset.t) === Number(v)));
+}
+$('#pion-taille').addEventListener('input', (ev) => { majTailleUI(ev.target.value); $('#pion-taille-num').value = ev.target.value; });
 $('#pion-taille').addEventListener('change', (ev) => sendSkin({ taille: ev.target.value }));
+$('#pion-taille-num').addEventListener('change', (ev) => { if (Number(ev.target.value) > 0) sendSkin({ taille: ev.target.value }); });
+$$('#pion-tailles [data-t]').forEach((b) => b.addEventListener('click', () => { majTailleUI(b.dataset.t); sendSkin({ taille: b.dataset.t }); }));
 
 function renderPion() {
   const list = editableTokens();
@@ -543,7 +568,7 @@ function renderPion() {
   if (document.activeElement !== $('#pion-label')) $('#pion-label').value = t.label;
   $('#pion-label').disabled = !!t.ownerId;
   $('#pion-label').title = t.ownerId ? 'Le nom d\'un pion de joueur suit le nom du personnage' : '';
-  $('#pion-taille').value = String(t.taille);
+  majTailleUI(t.taille);
   $('#pion-couleur').value = t.couleur;
 
   const s = t.skin;
@@ -1011,6 +1036,15 @@ $('#scene-form').addEventListener('submit', (ev) => {
 $('#scene-none').addEventListener('click', () => socket.emit('scene:activer', { id: null }));
 $('#grid-on').addEventListener('change', (ev) => socket.emit('scene:grille', { grille: ev.target.checked }));
 $('#grid-size').addEventListener('change', (ev) => socket.emit('scene:grille', { cellule: ev.target.value }));
+$('#grid-snap').addEventListener('change', (ev) => socket.emit('scene:grille', { aimant: ev.target.checked }));
+// échelle de tous les pions de la carte : aperçu immédiat, envoi au lâcher du curseur
+$('#pions-echelle').addEventListener('input', (ev) => {
+  S.scene.echellePions = ev.target.value / 100;
+  $('#pions-echelle-val').textContent = ev.target.value + ' %';
+  renderTokens();
+});
+$('#pions-echelle').addEventListener('change', (ev) => socket.emit('scene:grille', { echelle: ev.target.value / 100 }));
+$('#pions-echelle-reset').addEventListener('click', () => socket.emit('scene:grille', { echelle: 1 }));
 $('#token-form').addEventListener('submit', (ev) => {
   ev.preventDefault();
   socket.emit('token:add', {
@@ -1049,6 +1083,13 @@ function renderMj() {
 
   // Grille
   $('#grid-on').checked = S.scene.grille;
+  $('#grid-snap').checked = S.scene.aimant !== false;
+  $('#grid-snap').disabled = !S.scene.grille;
+  if (document.activeElement !== $('#pions-echelle')) {
+    const pc = Math.round((S.scene.echellePions || 1) * 100);
+    $('#pions-echelle').value = pc;
+    $('#pions-echelle-val').textContent = pc + ' %';
+  }
   if (document.activeElement !== $('#grid-size')) $('#grid-size').value = Math.round(S.scene.cellule);
 
   // Pions

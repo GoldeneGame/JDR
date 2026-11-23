@@ -528,6 +528,9 @@ button.small { padding: 3px 9px; font-size: 15px; }
 .slide-list .slide-item.drop-apres { box-shadow: 0 3px 0 var(--gold-2); }
 .slide-list.mosaique .slide-item.drop-avant { box-shadow: -4px 0 0 var(--gold-2); }
 .slide-list.mosaique .slide-item.drop-apres { box-shadow: 4px 0 0 var(--gold-2); }
+.pion-taille-zone { gap: 6px; margin: 6px 0; }
+.pion-taille-zone .fig-label { white-space: nowrap; }
+#pion-tailles .chip { padding: 2px 8px; font-size: 13px; }
 .slide-editor { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
 .slide-preview .slide { border-radius: 8px; box-shadow: 0 6px 20px #000a; }
 .small-file { padding: 3px 10px; font-size: 15px; }

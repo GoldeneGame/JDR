@@ -45,6 +45,10 @@ const num = (v, min, max, def = 0) => {
   const n = Math.round(Number(v));
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : def;
 };
+/** Taille d'un pion, en cases : de 0,25 à 6, au vingtième près (0,5 = petit, 1 = moyen, 2 = grand…). */
+const tailleOk = (v, def = 1) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.round(Math.min(6, Math.max(0.25, n)) * 20) / 20 : def; };
+/** Échelle de tous les pions d'une carte (pour coller aux cases dessinées sur l'image) : de 25 % à 400 %. */
+const echelleOk = (v, def = 1) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.round(Math.min(4, Math.max(0.25, n)) * 100) / 100 : def; };
 const pct = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 50; };
 const mod = (v) => Math.floor(((Number(v) || 10) - 10) / 2);
 const fmtMod = (m) => (m >= 0 ? '+' : '') + m;
@@ -98,7 +102,7 @@ function rollFormula(formula) {
 const defaultState = () => ({
   characters: {},
   scenes: [],
-  scene: { actif: null, grille: true, cellule: 70 },
+  scene: { actif: null, grille: true, cellule: 70, aimant: true, echellePions: 1 },
   tokens: {},
   initiative: { entries: [], actif: null, round: 1 },
   log: [],
@@ -210,8 +214,8 @@ function freeSpot(taille = 1) {
 function createToken({ label, couleur, taille = 1, ownerId = null, cache = false, skin = null, stats = null }) {
   const t = {
     id: uid(), label: str(label, 30), couleur: isColor(couleur) ? couleur : '#8b1e1e',
-    taille: num(taille, 1, 4, 1), ownerId, cache: !!cache,
-    ...freeSpot(num(taille, 1, 4, 1)),
+    taille: tailleOk(taille), ownerId, cache: !!cache,
+    ...freeSpot(tailleOk(taille)),
     skin: normalizeSkin(skin || (ownerId ? { contenu: 'figurine', forme: 'socle', cadre: 'or' } : { cadre: 'simple' })),
   };
   // Monstres / PNJ : points de vie, CA et attaque (les PV des joueurs sont sur leur fiche)
@@ -447,6 +451,7 @@ function viewFor(so) {
       battle: !!(active && !active.image),
       cellule: (active && active.cellule) || state.scene.cellule,
       grillePropre: !!(active && active.cellule),
+      echellePions: active ? echelleOk(active.echellePions) : echelleOk(state.scene.echellePions),
       cols: active ? active.cols : null,
       rows: active ? active.rows : null,
       fond: active ? active.fond || null : null,
@@ -835,7 +840,7 @@ io.on('connection', (socket) => {
     if (!t) return;
     if ('label' in p && !t.ownerId && str(p.label, 30).trim()) t.label = str(p.label, 30).trim();
     if ('couleur' in p && isColor(p.couleur)) t.couleur = p.couleur;
-    if ('taille' in p) t.taille = num(p.taille, 1, 4, 1);
+    if ('taille' in p) t.taille = tailleOk(p.taille, t.taille);
     if ('cache' in p) t.cache = !!p.cache;
     if (!t.ownerId) {
       if ('pvMax' in p) { t.pvMax = num(p.pvMax, 1, 9999, t.pvMax || 10); if (t.pv == null) t.pv = t.pvMax; t.pv = Math.min(t.pv, t.pvMax); }
@@ -918,7 +923,7 @@ io.on('connection', (socket) => {
     }
     if (isMj()) {
       if (label !== undefined && !t.ownerId && str(label, 30).trim()) t.label = str(label, 30).trim();
-      if (taille !== undefined) t.taille = num(taille, 1, 4, t.taille);
+      if (taille !== undefined) t.taille = tailleOk(taille, t.taille);
     }
     broadcastState();
     save();
@@ -1207,8 +1212,14 @@ io.on('connection', (socket) => {
     save();
   }));
 
-  socket.on('scene:grille', mjOnly(({ grille, cellule } = {}) => {
+  socket.on('scene:grille', mjOnly(({ grille, cellule, aimant, echelle } = {}) => {
     if (grille !== undefined) state.scene.grille = !!grille;
+    if (aimant !== undefined) state.scene.aimant = !!aimant;
+    if (echelle !== undefined) {
+      const s = activeScene();
+      if (s) s.echellePions = echelleOk(echelle, echelleOk(s.echellePions));
+      else state.scene.echellePions = echelleOk(echelle, echelleOk(state.scene.echellePions));
+    }
     if (cellule !== undefined) {
       const s = activeScene();
       if (s && s.cellule) s.cellule = Math.min(2000, Math.max(8, Number(cellule) || s.cellule));

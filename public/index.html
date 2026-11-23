@@ -271,12 +271,18 @@
 
           <div class="mj-only grid2">
             <label>Nom<input id="pion-label" maxlength="30"></label>
-            <label>Taille
-              <select id="pion-taille">
-                <option value="1">Moyen (1 case)</option><option value="2">Grand (2×2)</option>
-                <option value="3">Très grand (3×3)</option><option value="4">Gigantesque (4×4)</option>
-              </select>
-            </label>
+          </div>
+          <div class="mj-only col pion-taille-zone">
+            <div class="row">
+              <span class="fig-label">Taille <span class="muted tiny">(en cases)</span></span>
+              <input type="range" id="pion-taille" min="0.25" max="6" step="0.05" class="grow" title="Taille du pion">
+              <input type="number" id="pion-taille-num" min="0.25" max="6" step="0.05" class="w70" title="Taille exacte, en cases">
+            </div>
+            <div id="pion-tailles" class="chips">
+              <button type="button" class="chip" data-t="0.5">Minuscule</button><button type="button" class="chip" data-t="0.75">Petit</button>
+              <button type="button" class="chip" data-t="1">Moyen</button><button type="button" class="chip" data-t="2">Grand</button>
+              <button type="button" class="chip" data-t="3">Très grand</button><button type="button" class="chip" data-t="4">Gigantesque</button>
+            </div>
           </div>
 
           <h3>Visage du pion</h3>
@@ -405,7 +411,8 @@
           <label class="check">CA <input type="number" id="token-ca" min="0" max="50" class="w70" placeholder="10"></label>
           <input type="color" id="token-color" value="#8b1e1e">
           <select id="token-size">
-            <option value="1">Moyen</option><option value="2">Grand</option>
+            <option value="0.5">Minuscule</option><option value="0.75">Petit</option>
+            <option value="1" selected>Moyen</option><option value="2">Grand</option>
             <option value="3">Très grand</option><option value="4">Gigantesque</option>
           </select>
           <label class="check"><input type="checkbox" id="token-hidden"> Caché</label>
@@ -625,6 +632,14 @@
         <div class="row">
           <label class="check"><input type="checkbox" id="grid-on"> Afficher la grille</label>
           <label class="check">Case <input type="number" id="grid-size" min="10" max="400" class="w70"> px</label>
+        </div>
+        <label class="check" title="Décoché : les pions se posent exactement où tu les lâches. Astuce : maintiens Alt en lâchant un pion pour le poser librement une fois.">
+          <input type="checkbox" id="grid-snap"> Aimanter les pions aux cases</label>
+        <div class="row">
+          <label class="check grow" title="Grossit ou réduit tous les pions de cette carte, pour qu'ils collent aux cases de ton image">Taille des pions sur cette carte
+            <input type="range" id="pions-echelle" min="25" max="400" step="5" class="grow"></label>
+          <span id="pions-echelle-val" class="muted tiny w70"></span>
+          <button type="button" id="pions-echelle-reset" class="small" title="Revenir à 100 %">100 %</button>
         </div>
       </section>
     </div>
