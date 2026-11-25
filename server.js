@@ -102,7 +102,7 @@ function rollFormula(formula) {
 const defaultState = () => ({
   characters: {},
   scenes: [],
-  scene: { actif: null, grille: true, cellule: 70, aimant: true, echellePions: 1 },
+  scene: { actif: null, grille: true, cellule: 70, aimantCases: false, echellePions: 1 },
   tokens: {},
   initiative: { entries: [], actif: null, round: 1 },
   log: [],
@@ -110,6 +110,7 @@ const defaultState = () => ({
 const saved = readJson(SAVE_FILE, {});
 const state = Object.assign(defaultState(), saved);
 state.scene = Object.assign(defaultState().scene, saved.scene || {});
+delete state.scene.aimant; // ancien réglage (aimant actif par défaut) : désormais libre par défaut
 state.initiative = Object.assign(defaultState().initiative, saved.initiative || {});
 
 let saveTimer = null;
@@ -1214,7 +1215,7 @@ io.on('connection', (socket) => {
 
   socket.on('scene:grille', mjOnly(({ grille, cellule, aimant, echelle } = {}) => {
     if (grille !== undefined) state.scene.grille = !!grille;
-    if (aimant !== undefined) state.scene.aimant = !!aimant;
+    if (aimant !== undefined) state.scene.aimantCases = !!aimant;
     if (echelle !== undefined) {
       const s = activeScene();
       if (s) s.echellePions = echelleOk(echelle, echelleOk(s.echellePions));

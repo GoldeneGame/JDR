@@ -186,8 +186,9 @@ Change le mot de passe du MJ avant de partager le lien sur Internet. Relance l'a
   (Minuscule, Petit, Moyen, Grand, Très grand, Gigantesque). Sur la carte : **Shift + molette** sur un pion pour l'ajuster finement.
 - **Taille des pions sur cette carte** (🎬 Séance → Cartes → Grille) : grossit ou réduit tous les pions de la carte active
   (25 à 400 %), pour qu'ils collent aux cases dessinées sur ton image. Chaque carte garde son réglage.
-- **Aimanter les pions aux cases** : décoche pour poser les pions exactement où tu les lâches.
-  Avec l'aimant actif, maintiens **Alt** en lâchant un pion pour le poser librement une fois.
+- **Déplacement libre** : par défaut, pions et personnages se posent exactement où tu les lâches, sans case par case.
+- **Aimanter les pions aux cases** (option) : coche pour les caler au centre des cases.
+  Maintiens **Alt** en lâchant un pion pour inverser le mode une fois (aimanté si libre, libre si aimanté).
 
 ## Séance : slides et cartes à la suite
 

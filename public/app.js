@@ -346,9 +346,9 @@ function renderTokens() {
   for (const [id, e] of tokenEls) if (!seen.has(id)) { e.remove(); tokenEls.delete(id); }
 }
 
-/** Aimante un pion au centre des cases (si la grille est affichée et l'aimant actif). */
+/** Aimante un pion au centre des cases (si la grille est affichée). */
 function snap(p, t) {
-  if (!S.scene.grille || S.scene.aimant === false) return p;
+  if (!S.scene.grille) return p;
   const cell = S.scene.cellule;
   // nombre de cases couvertes : impair = centré sur une case, pair = sur une intersection
   const n = Math.max(1, Math.round(t.taille * (S.scene.echellePions || 1)));
@@ -383,8 +383,8 @@ function onTokenDown(ev) {
     e.removeEventListener('pointermove', move);
     e.removeEventListener('pointerup', up);
     e.removeEventListener('pointercancel', up);
-    // Alt enfoncé au lâcher : placement libre, même avec l'aimant
-    const p = pe.altKey ? pos(pe) : snap(pos(pe), t);
+    // Alt enfoncé au lâcher : inverse le mode (aimanté si libre, libre si aimanté)
+    const p = pe.altKey !== !!S.scene.aimantCases ? snap(pos(pe), t) : pos(pe);
     e.style.left = p.x + '%';
     e.style.top = p.y + '%';
     socket.emit('token:move', { id, ...p });
@@ -1083,7 +1083,7 @@ function renderMj() {
 
   // Grille
   $('#grid-on').checked = S.scene.grille;
-  $('#grid-snap').checked = S.scene.aimant !== false;
+  $('#grid-snap').checked = !!S.scene.aimantCases;
   $('#grid-snap').disabled = !S.scene.grille;
   if (document.activeElement !== $('#pions-echelle')) {
     const pc = Math.round((S.scene.echellePions || 1) * 100);
